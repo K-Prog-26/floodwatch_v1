@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2563eb">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="FloodWatch">
+<title>FloodWatch Live</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<style>
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#16202e}
+#map{position:absolute;inset:0}
+.top{position:absolute;z-index:1000;top:calc(10px + env(safe-area-inset-top,0px));left:10px;right:10px;max-width:470px;background:#fff;border-radius:16px;box-shadow:0 4px 18px rgba(0,0,0,.2);padding:10px}
+.row{display:flex;gap:8px}
+input{flex:1;min-width:0;padding:11px 12px;border:1px solid #d5dce6;border-radius:12px;font:inherit}
+button{font:inherit;cursor:pointer}
+.go{padding:0 16px;border:0;border-radius:12px;background:#2563eb;color:#fff;font-weight:600}
+.ic{width:44px;border:1px solid #d5dce6;background:#fff;border-radius:12px;font-size:1.1rem}
+.sheet{position:absolute;z-index:1000;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));max-width:470px;background:#fff;border-radius:18px;box-shadow:0 4px 18px rgba(0,0,0,.25);padding:12px}
+.msg{padding:9px 11px;border-radius:12px;font-size:.88rem;margin-top:8px}
+.ok{background:#e3f6ec}.risk{background:#fdf0d4}.block{background:#fde3e3}.info{background:#e8effe}
+.opts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}
+.opt{padding:10px 4px;border:2px solid #dde4ee;background:#f6f8fb;border-radius:12px;font-size:.8rem}
+.opt b{display:block;font-size:1.25rem}.opt.on{border-color:#2563eb;background:#e8effe}
+.small{font-size:.78rem;color:#5b6a7d}
+.leg{display:flex;gap:10px;flex-wrap:wrap;font-size:.75rem;color:#5b6a7d;margin-top:8px}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px}
+.top{overflow:auto;max-height:62vh}
+.rl{display:grid;gap:6px;margin-top:6px}.rc{display:block;width:100%;text-align:left;padding:9px 10px;border:2px solid #dde4ee;background:#f6f8fb;border-radius:12px;font-size:.82rem;line-height:1.4}.rc.on{border-color:#2563eb;background:#e8effe}
+.me{width:26px;height:26px}.me .rot{position:relative;width:26px;height:26px}.me i{position:absolute;left:4px;top:4px;width:18px;height:18px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 3px rgba(37,99,235,.28)}
+.me b{display:none;position:absolute;left:6px;top:-9px;border:7px solid transparent;border-bottom:13px solid #2563eb;filter:drop-shadow(0 0 2px #fff)}.navmode .me b{display:block}
+.navb{position:absolute;z-index:1000;top:calc(10px + env(safe-area-inset-top,0px));left:10px;right:10px;max-width:470px;background:#16202e;color:#fff;border-radius:16px;padding:12px;box-shadow:0 4px 18px rgba(0,0,0,.35)}
+.mc{background:#fff;border-radius:18px;padding:16px;width:100%;max-width:380px;display:grid;gap:8px;max-height:90vh;overflow:auto}
+.call{display:block;padding:13px;border-radius:12px;background:#e04545;color:#fff;text-align:center;font-weight:600;text-decoration:none}
+.nb{padding:12px;border:2px solid #dde4ee;background:#f6f8fb;border-radius:12px;font-size:.92rem}
+.pois{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.pois button{padding:5px 9px;border:1px solid #d5dce6;background:#f6f8fb;border-radius:16px;font-size:.76rem}.pois button.on{border-color:#2563eb;background:#e8effe}
+.poi span{display:flex;width:30px;height:30px;align-items:center;justify-content:center;background:#fff;border:2px solid #6b7a90;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,.3);font-size:16px}.poi span.em{border-color:#e04545}
+.pv{display:flex;gap:6px;margin-top:8px}.pv button{flex:1;padding:7px 4px;border:1px solid #d5dce6;background:#f6f8fb;border-radius:10px;font-size:.78rem}
+.chips{display:flex;gap:6px;margin-top:8px}.chips button{flex:1;padding:8px 2px;border:2px solid #dde4ee;background:#f6f8fb;border-radius:12px;font-size:.78rem}.chips button.on{border-color:#2563eb;background:#e8effe}
+.tl{display:flex;align-items:center;gap:6px;font-size:.82rem;margin-top:8px}.tl input{flex:none;padding:0;width:auto}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="top">
+  <div class="row">
+    <input id="q" placeholder="Where to? (e.g. SM Mall of Asia)" aria-label="Destination">
+    <button class="go" id="go">Go</button>
+    <button class="ic" id="loc" title="My location" aria-label="Go to my location">📍</button>
+    <button class="ic" id="sos" title="Emergency help" aria-label="Emergency help" style="border-color:#e04545">🆘</button>
+    <button class="ic" id="clr" title="Clear route" aria-label="Clear route" style="display:none">✕</button>
+  </div>
+  <div class="chips"><button data-v="moto">🏍️ Motorcycle</button><button data-v="car">🚗 Car</button><button data-v="puv">🚌 Jeepney / Bus</button></div>
+  <label class="tl"><input type="checkbox" id="toll"> Avoid toll roads</label>
+  <div class="small" style="margin-top:8px">Show on map:</div><div class="pois" id="pois" style="margin-top:4px"></div><div class="small" id="pnote"></div>
+  <div class="pois" id="trfrow" style="display:none;margin-top:6px"><button id="trf">🚦 Live traffic</button></div>
+  <div id="res"></div>
+  <div class="leg"><span><i style="background:#1fa463"></i>Passable</span><span><i style="background:#f0a020"></i>Risky</span><span><i style="background:#e04545"></i>Not passable</span><span id="sync"></span></div>
+</div>
+<div class="navb" id="nav" style="display:none">
+  <div class="row" style="align-items:center"><div id="navi" style="font-size:2.4rem;line-height:1">⬆️</div>
+    <div style="flex:1;min-width:0"><div id="navd" style="font-size:1.5rem;font-weight:700">—</div><div id="navt" style="font-size:.95rem"></div></div></div>
+  <div id="nave" class="small" style="color:#b8c4d6;margin-top:6px"></div><div id="nava"></div>
+  <div class="row" style="margin-top:8px"><button class="nb" id="navm" style="flex:1">🔊 Voice on</button><button class="nb" id="navr" style="flex:1">🌊 Report</button><button class="nb" id="navc" style="display:none">🎯</button><button class="nb" id="navx" style="flex:1;color:#e04545">End</button></div>
+</div>
+<div class="sheet" id="sheet"></div>
+<div id="sosm" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.45);align-items:center;justify-content:center;padding:16px">
+  <div class="mc" role="dialog" aria-label="Emergency help">
+    <b style="font-size:1.05rem">🆘 Emergency help</b>
+    <div id="hot" style="display:grid;gap:8px"></div>
+    <div class="small">Or get directions to the nearest:</div>
+    <button class="nb" data-n="hospital">🏥 Hospital</button><button class="nb" data-n="police">🚓 Police station</button><button class="nb" data-n="fire">🚒 Fire station</button>
+    <button class="nb" id="sosx" style="background:#fff">Close</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+// ---- SETTINGS ----
+// For LIVE sharing between users: paste your Firebase Realtime Database URL, e.g. "https://my-app-default-rtdb.firebaseio.com"
+const DB = "";
+// For real toll avoidance + precise flood avoidance: get a FREE key at https://openrouteservice.org (Sign up > Dashboard > Request a token)
+// and paste it here. Leave empty to use the basic free router.
+const ORS_KEY = "";
+// TomTom (recommended): live-traffic routing, motorcycle mode, toll + flood-zone avoidance, search and traffic map.
+// Free key at https://developer.tomtom.com (Sign up > Dashboard > Keys). Paste it here:
+const TOMTOM_KEY = "";
+const TT_MODE = {moto:"motorcycle", car:"car", puv:"bus"};
+let engine = "";
+const PROFILE = {moto:"driving-car", car:"driving-car", puv:"driving-car"}; // OpenRouteService has no motorcycle profile
+const EXPIRE_HOURS = 3, NEAR_M = 80, COOLDOWN_S = 60;
+const COL = {ok:"#1fa463", risk:"#f0a020", block:"#e04545"};
+const LBL = {ok:"Passable", risk:"Risky", block:"Not passable"};
+const DEPTH = ["Ankle-deep","Knee-deep","Waist-deep+"];
+const $ = id => document.getElementById(id);
+
+const map = L.map("map",{zoomControl:false}).setView([14.4793,121.0198],14);
+L.control.zoom({position:"bottomright"}).addTo(map);
+// Hosted on a website: official OpenStreetMap tiles. Opened as a local file: Esri tiles (OSM blocks file:// pages).
+if(TOMTOM_KEY)
+  L.tileLayer("https://api.tomtom.com/map/1/tile/basic/main/{z}/{x}/{y}.png?key="+TOMTOM_KEY,{maxZoom:22,attribution:"© TomTom, © OpenStreetMap contributors"}).addTo(map);
+else if(location.protocol==="http:"||location.protocol==="https:")
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap contributors"}).addTo(map);
+else
+  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:"Tiles © Esri"}).addTo(map);
+
+const VEH={moto:"🏍️ motorcycles",car:"🚗 cars",puv:"🚌 jeepneys & buses"};
+const RANK={ok:0,risk:1,block:2};
+// How each vehicle copes with water depth (ankle / knee / waist+), and how we adjust "light vehicle" reports for it
+const DR={moto:["ok","block","block"],car:["ok","risk","block"],puv:["ok","ok","block"]};
+const SH={moto:{ok:"ok",risk:"risk",block:"block"},car:{ok:"ok",risk:"risk",block:"block"},puv:{ok:"ok",risk:"ok",block:"risk"}};
+const eff=(r,v)=>{const a=SH[v][r.s],b=DR[v][r.d];return RANK[a]>=RANK[b]?a:b};
+let vehicle="car", avoidToll=false, tollBroken=false;
+try{const v=JSON.parse(localStorage.getItem("fwv")||"{}"); if(VEH[v.vehicle]) vehicle=v.vehicle; avoidToll=!!v.avoidToll;}catch(e){}
+const st=r=>eff(r,vehicle);
+let me=null, meMarker=null, dest=null, destMarker=null, reports=[], pick="ok", depth=0, pending=null, pendMarker=null, lastSent=0;
+const layer = L.layerGroup().addTo(map), routeLayer = L.layerGroup().addTo(map);
+$("sync").textContent = (DB ? "🟢 Live sync on" : "⚪ Reports saved on this device only") + (TOMTOM_KEY ? " · 🚦 TomTom routing + traffic on" : ORS_KEY ? " · 🧭 Smart routing on" : "");
+
+// ---- storage / sync ----
+const valid = r => r && COL[r.s] && DEPTH[r.d] && isFinite(r.lat) && isFinite(r.lng) && isFinite(r.t);
+try { reports = JSON.parse(localStorage.getItem("fwl")||"[]").filter(valid); } catch(e){}
+const saveLocal = () => { try{ localStorage.setItem("fwl", JSON.stringify(reports)); }catch(e){} };
+async function pull(){
+  if(!DB) return;
+  try{ const o = await (await fetch(DB+"/reports.json")).json(); reports = Object.values(o||{}).filter(valid); saveLocal(); render(); }catch(e){}
+}
+async function push(r){ if(DB) try{ await fetch(DB+"/reports.json",{method:"POST",body:JSON.stringify(r)}); }catch(e){} }
+const live = () => reports.filter(r => Date.now()-r.t < EXPIRE_HOURS*3600e3);
+// newest report within ~NEAR_M of each other wins (so "cleared" overrides older "blocked")
+function current(){
+  const out=[]; live().sort((a,b)=>b.t-a.t).forEach(r=>{ if(!out.some(o=>hav([o.lat,o.lng],[r.lat,r.lng])<NEAR_M)) out.push(r); }); return out;
+}
+const ago = t => { const m=Math.round((Date.now()-t)/60000); return m<1?"just now":m<60?m+" min ago":Math.round(m/60)+" h ago"; };
+
+// ---- draw reports ----
+function render(){
+  layer.clearLayers();
+  current().forEach(r => {
+    L.circle([r.lat,r.lng],{radius:NEAR_M*0.7,color:COL[st(r)],fillColor:COL[st(r)],fillOpacity:.35,weight:2})
+      .bindPopup(`<b>${LBL[st(r)]}</b> for ${VEH[vehicle]}<br>${DEPTH[r.d]} · ${ago(r.t)}
+        <div class="pv"><button onclick="vote(${r.t},'${r.s}')">👍 Still true</button><button onclick="vote(${r.t},'ok')">✅ It’s cleared</button></div>`).addTo(layer);
+  });
+}
+window.vote = (id,s) => {
+  const o = reports.find(r=>r.t===id); if(!o||!cool()) return;
+  addReport({lat:o.lat,lng:o.lng,s,d:s==="ok"?0:o.d,t:Date.now()}); map.closePopup();
+};
+const cool = () => { const w = COOLDOWN_S-(Date.now()-lastSent)/1000; if(w>0){ say(`Please wait ${Math.ceil(w)}s before sending another report.`,"risk"); return false; } return true; };
+function addReport(r){ reports.push(r); lastSent=Date.now(); saveLocal(); push(r); render(); if(dest&&!nav) routeTo(dest); if(nav) navRecheck(); idle("Thank you! 🙌","Your report helps others avoid flooded roads."); }
+function say(t,c){ $("res").innerHTML = `<div class="msg ${c}">${t}</div>`; }
+
+// ---- location ----
+function locate(){
+  if(!navigator.geolocation){ say("Location isn’t available on this device.","info"); return; }
+  navigator.geolocation.watchPosition(p => {
+    if(sim) return; gotPos(p.coords.latitude,p.coords.longitude,p.coords.heading,p.coords.speed);
+  },()=>say("Location is off, so directions start from the map center. Allow location access for best results.","info"),{enableHighAccuracy:true});
+}
+$("loc").onclick = () => { if(me) map.setView(me,16); else locate(); };
+
+// ---- reporting ----
+function idle(a,b){ $("sheet").innerHTML = `<b>${a||"📍 Tap the map where you see flooding"}</b><div class="small">${b||"Then tell others if light vehicles can get through."}</div><div class="small" style="margin-top:6px">⚠️ Never drive through floodwater you can’t see the bottom of.</div>`; }
+map.on("click", e => { pending=e.latlng; if(pendMarker) map.removeLayer(pendMarker); pendMarker=L.marker(pending).addTo(map); sheet(); });
+function sheet(){
+  $("sheet").innerHTML = `<b>Can a light vehicle pass here?</b>
+  <div class="opts">${[["ok","✅","Passable"],["risk","⚠️","Risky"],["block","⛔","Not passable"]].map(o=>`<button class="opt ${pick===o[0]?"on":""}" data-p="${o[0]}"><b>${o[1]}</b>${o[2]}</button>`).join("")}</div>
+  <div class="small">Water level</div>
+  <div class="opts">${DEPTH.map((d,i)=>`<button class="opt ${depth===i?"on":""}" data-d="${i}">${d}</button>`).join("")}</div>
+  <div class="row"><button class="go" style="flex:1;padding:12px" id="send">Submit report</button><button class="opt" id="cancel" style="padding:0 14px">Cancel</button></div>`;
+  $("sheet").querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{pick=b.dataset.p;sheet()});
+  $("sheet").querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{depth=+b.dataset.d;sheet()});
+  $("cancel").onclick = reset;
+  $("send").onclick = () => { if(!cool()) return; const p=pending; reset(); addReport({lat:p.lat,lng:p.lng,s:pick,d:depth,t:Date.now()}); };
+}
+function reset(){ if(pendMarker){ map.removeLayer(pendMarker); pendMarker=null; } pending=null; idle(); }
+
+// ---- search + routing ----
+async function search(){
+  const q=$("q").value.trim(); if(!q) return;
+  say("Searching…","info");
+  try{
+    const c=map.getCenter(); let pos=null;
+    if(TOMTOM_KEY){
+      try{ const t=await (await fetch("https://api.tomtom.com/search/2/search/"+encodeURIComponent(q)+".json?key="+TOMTOM_KEY+"&limit=1&countrySet=PH&lat="+c.lat+"&lon="+c.lng)).json();
+        if(t.results&&t.results.length) pos=[t.results[0].position.lat,t.results[0].position.lon]; }catch(e){}
+    }
+    if(!pos){
+      const j=await (await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ph&q="+encodeURIComponent(q)+"&viewbox="+[c.lng-.5,c.lat+.5,c.lng+.5,c.lat-.5].join(","))).json();
+      if(j.length) pos=[+j[0].lat,+j[0].lon];
+    }
+    if(!pos){ say("Couldn’t find that place. Try adding the city name.","risk"); return; }
+    dest=pos;
+    if(destMarker) map.removeLayer(destMarker);
+    destMarker=L.marker(dest).addTo(map); routeTo(dest);
+  }catch(e){ say("Search failed. Check your connection, or host this page on a website (see notes).","risk"); }
+}
+$("go").onclick = search; $("q").addEventListener("keydown",e=>{ if(e.key==="Enter") search(); });
+$("clr").onclick = () => { dest=null; routeLayer.clearLayers(); if(destMarker){ map.removeLayer(destMarker); destMarker=null; } $("res").innerHTML=""; $("clr").style.display="none"; };
+
+function hav(a,b){ const R=6371e3,k=Math.PI/180,dA=(b[0]-a[0])*k,dO=(b[1]-a[1])*k,x=Math.sin(dA/2)**2+Math.cos(a[0]*k)*Math.cos(b[0]*k)*Math.sin(dO/2)**2; return 2*R*Math.asin(Math.sqrt(x)); }
+function hits(coords){ return current().filter(r => st(r)!=="ok" && coords.some(c=>hav([c[1],c[0]],[r.lat,r.lng])<NEAR_M)); }
+function score(rt){ const h=hits(rt.geometry.coordinates); return {rt, block:h.filter(r=>st(r)==="block").length, risk:h.filter(r=>st(r)==="risk").length, hits:h}; }
+const sq=r=>{ const dl=100/111000, dn=100/(111000*Math.cos(r.lat*Math.PI/180)); return [[[r.lng-dn,r.lat-dl],[r.lng+dn,r.lat-dl],[r.lng+dn,r.lat+dl],[r.lng-dn,r.lat+dl],[r.lng-dn,r.lat-dl]]]; };
+async function ors(pts,alt,polys){
+  const body={coordinates:pts.map(p=>[p[1],p[0]]),options:{}};
+  if(avoidToll) body.options.avoid_features=["tollways"];
+  if(polys&&polys.length) body.options.avoid_polygons={type:"MultiPolygon",coordinates:polys};
+  if(alt) body.alternative_routes={target_count:3,share_factor:0.6,weight_factor:1.6};
+  const res=await fetch("https://api.openrouteservice.org/v2/directions/"+PROFILE[vehicle]+"/geojson",{method:"POST",headers:{"Content-Type":"application/json","Authorization":ORS_KEY},body:JSON.stringify(body)});
+  const j=await res.json(); if(!j.features||!j.features.length) throw new Error("ors");
+  return j.features.map(f=>({geometry:f.geometry,distance:f.properties.summary.distance,duration:f.properties.summary.duration,
+    steps:(f.properties.segments||[]).flatMap(sg=>(sg.steps||[]).map(t=>{ const c=f.geometry.coordinates[t.way_points[0]]; return {text:t.instruction,dist:t.distance,loc:[c[1],c[0]]}; }))}));
+}
+async function tt(pts,alt,polys){
+  const loc=pts.map(p=>p[0]+","+p[1]).join(":");
+  const q=new URLSearchParams({key:TOMTOM_KEY,instructionsType:"text",language:"en-GB",traffic:"true",travelMode:TT_MODE[vehicle],routeRepresentation:"polyline",computeTravelTimeFor:"all"});
+  if(alt) q.set("maxAlternatives","3");
+  if(avoidToll) q.append("avoid","tollRoads");
+  const url="https://api.tomtom.com/routing/1/calculateRoute/"+loc+"/json?"+q.toString();
+  let res;
+  if(polys&&polys.length){
+    const rectangles=polys.slice(0,10).map(pg=>{ const r=pg[0], lo=r.map(c=>c[0]), la=r.map(c=>c[1]);
+      return {southWestCorner:{latitude:Math.min.apply(null,la),longitude:Math.min.apply(null,lo)},northEastCorner:{latitude:Math.max.apply(null,la),longitude:Math.max.apply(null,lo)}}; });
+    res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({avoidAreas:{rectangles:rectangles}})});
+  } else res=await fetch(url);
+  const j=await res.json(); if(!j.routes||!j.routes.length) throw new Error("tt");
+  return j.routes.map(r=>{
+    const co=[]; r.legs.forEach(l=>l.points.forEach(pt=>co.push([pt.longitude,pt.latitude])));
+    const ins=(r.guidance&&r.guidance.instructions)||[], total=r.summary.lengthInMeters;
+    const steps=ins.map((x,i)=>({text:x.message||"Continue",dist:(i<ins.length-1?ins[i+1].routeOffsetInMeters:total)-x.routeOffsetInMeters,loc:[x.point.latitude,x.point.longitude]}));
+    return {geometry:{type:"LineString",coordinates:co},distance:total,duration:r.summary.travelTimeInSeconds,delay:r.summary.trafficDelayInSeconds||0,steps:steps};
+  });
+}
+async function route(pts,alt,polys){
+  if(TOMTOM_KEY){
+    try{ const r=await tt(pts,alt,polys); engine="TomTom"; return r; }catch(e){}
+    if(alt){ try{ const r=await tt(pts,false,polys); engine="TomTom"; return r; }catch(e){} }
+  }
+  if(ORS_KEY){
+    try{ const r=await ors(pts,alt,polys); engine="OpenRouteService"; return r; }catch(e){}
+    if(alt){ try{ const r=await ors(pts,false,polys); engine="OpenRouteService"; return r; }catch(e){} }
+  }
+  engine="the basic free router";
+  return osrm(pts,alt);
+}
+function osrmText(s){ const m=s.maneuver, d=m.modifier||"", on=s.name?" onto "+s.name:"";
+  if(m.type==="arrive") return "You have arrived";
+  if(m.type==="depart") return "Head out"+(s.name?" on "+s.name:"");
+  if(m.type==="roundabout"||m.type==="rotary") return "Enter the roundabout"+(s.name?" and exit onto "+s.name:"");
+  if(m.type==="continue"||m.type==="new name") return "Continue"+(s.name?" on "+s.name:"");
+  if(m.type==="merge") return "Merge"+on;
+  if(m.type==="fork") return "Keep "+(d.indexOf("left")>=0?"left":"right")+" at the fork"+on;
+  if(d==="uturn") return "Make a U-turn";
+  if(d==="straight") return "Continue straight"+on;
+  return (m.type==="end of road"?"At the end of the road, turn ":"Turn ")+d+on; }
+function addSteps(r){ const out=[], L2=(r.legs||[]).length;
+  (r.legs||[]).forEach((lg,li)=>(lg.steps||[]).forEach(s=>{ const m=s.maneuver;
+    if(m.type==="arrive"&&li<L2-1) return; if(m.type==="depart"&&li>0) return;
+    out.push({text:osrmText(s),dist:s.distance,loc:[m.location[1],m.location[0]]}); }));
+  return Object.assign({},r,{steps:out}); }
+async function osrm(pts,alt){
+  const u=`https://router.project-osrm.org/route/v1/driving/${pts.map(p=>p[1]+","+p[0]).join(";")}?alternatives=${alt?3:false}&overview=full&geometries=geojson&steps=true`;
+  if(avoidToll&&!tollBroken){ try{ const t=await (await fetch(u+"&exclude=toll")).json(); if(t.code==="Ok") return t.routes.map(addSteps); }catch(e){} tollBroken=true; }
+  const j=await (await fetch(u)).json(); return (j.routes||[]).map(addSteps);
+}
+async function routeTo(d,auto){
+  routeLayer.clearLayers(); $("clr").style.display="block";
+  const c=map.getCenter(), start=me||[c.lat,c.lng];
+  try{
+    say("Finding the safest route…","info");
+    let cand=(await route([start,d],true)).map(score);
+    if(!cand.length){ say("No road route found.","risk"); return; }
+    const fastest=cand[0], rank=(a,b)=>a.block-b.block||a.risk-b.risk||a.rt.duration-b.rt.duration;
+    let best=[...cand].sort(rank)[0], detour=false;
+    // still flooded? try detours that swing around the blocking spot
+    const blocker=best.hits.find(r=>st(r)==="block")||best.hits[0];
+    if(blocker&&best.block+best.risk>0){
+      const dl=900/111000, dn=900/(111000*Math.cos(blocker.lat*Math.PI/180));
+      const vias=[[blocker.lat+dl,blocker.lng],[blocker.lat-dl,blocker.lng],[blocker.lat,blocker.lng+dn],[blocker.lat,blocker.lng-dn]];
+      const extra=ORS_KEY ? (await route([start,d],false,best.hits.map(sq)).catch(()=>[])).map(score) : (await Promise.all(vias.map(v=>route([start,v,d],false).catch(()=>[])))).flat().map(score);
+      const b2=[...cand,...extra].sort(rank)[0];
+      if(rank(b2,best)<0){ best=b2; detour=true; }
+      extra.forEach(x=>x.extra=true); cand=[...cand,...extra];
+    }
+    const dur=(x,y)=>x.rt.duration-y.rt.duration;
+    const uniq=[]; cand.forEach(x=>{ if(!uniq.some(u=>Math.abs(u.rt.distance-x.rt.distance)<80&&Math.abs(u.rt.duration-x.rt.duration)<40)) uniq.push(x); });
+    const choices=uniq.sort(rank).slice(0,5);
+    const fastestC=[...choices].sort(dur)[0], shortestC=[...choices].sort((x,y)=>x.rt.distance-y.rt.distance)[0];
+    const tags=x=>[x===choices[0]?"⭐ Recommended":"",x===fastestC?"⚡ Fastest":"",x===shortestC?"📏 Shortest":"",x.extra?"↪️ Detour":""].filter(Boolean).join(" · ")||"Alternative";
+    const flag=x=>x.block?'<span style="color:#c0392b">⛔ Flooded road</span>':x.risk?'<span style="color:#b9770e">⚠️ Risky spot</span>':'<span style="color:#1e8449">✅ Clear</span>';
+    const show=(i,fit)=>{
+      routeLayer.clearLayers(); const sel=choices[i];
+      choices.forEach((x,j)=>{ if(j!==i) L.geoJSON(x.rt.geometry,{style:{color:"#7a8798",weight:6,opacity:.7,dashArray:"2 9"}}).on("click",()=>show(j)).addTo(routeLayer); });
+      const line=L.geoJSON(sel.rt.geometry,{style:{color:sel.block?COL.block:sel.risk?COL.risk:"#2563eb",weight:7,opacity:.95}}).addTo(routeLayer);
+      if(fit) map.fitBounds(line.getBounds(),{padding:[70,70]});
+      const km=(sel.rt.distance/1000).toFixed(1), min=Math.round(sel.rt.duration/60); let h,c;
+      if(sel.block){ c="block"; h=`<b>⛔ This route passes a flooded road.</b><br>${km} km · ${min} min.${choices.every(x=>x.block)?" Every route we found is affected. Consider waiting.":""}`; }
+      else if(sel.risk){ c="risk"; h=`<b>⚠️ This route has a risky flooded spot</b><br>${km} km · ${min} min. Drive slowly.`; }
+      else if(fastestC!==sel&&(fastestC.block||fastestC.risk)){ c="ok"; h=`<b>✅ Safer route</b><br>${km} km · ${min} min. The fastest route has ${fastestC.block?"a road that’s not passable":"a risky flooded road"}.`; }
+      else { c="ok"; h=`<b>✅ Route looks clear</b><br>${km} km · ${min} min.${me?"":" (Starting from the map center.)"}`; }
+      const cards=choices.map((x,j)=>`<button class="rc ${j===i?"on":""}" data-i="${j}"><b>${tags(x)}</b><br>${(x.rt.distance/1000).toFixed(1)} km · ${Math.round(x.rt.duration/60)} min${x.rt.delay>=120?" (+"+Math.round(x.rt.delay/60)+" min traffic)":""} · ${flag(x)}</button>`).join("");
+      $("res").innerHTML=`<div class="msg ${c}">${h}</div><button class="go" id="startnav" style="width:100%;padding:11px;margin-top:8px">${sel.block?"▶ Start anyway (flooded road)":"▶ Start navigation"}</button><button class="nb" id="simnav" style="width:100%;margin-top:6px;font-size:.82rem">🎬 Try a demo drive (no GPS needed)</button><div class="small" style="margin-top:8px">${choices.length} route${choices.length>1?"s":""} found via ${engine}. Tap one to compare:</div><div class="rl">${cards}</div>`
+        +(avoidToll&&tollBroken?'<div class="msg info">ℹ️ The basic router can’t avoid tolls, so routes may use toll roads. Add an OpenRouteService key for real toll avoidance.</div>':"");
+      $("res").querySelectorAll(".rc").forEach(b=>b.onclick=()=>show(+b.dataset.i));
+      $("startnav").onclick=()=>startNav(sel);
+      $("simnav").onclick=()=>startSim(sel);
+    };
+    show(0,true);
+    if(auto&&me) startNav(choices[0]);
+  }catch(e){ say("Couldn’t get directions. Check your connection.","risk"); }
+}
+
+const store=()=>{try{localStorage.setItem("fwv",JSON.stringify({vehicle,avoidToll}))}catch(e){}};
+function chips(){ document.querySelectorAll("[data-v]").forEach(b=>b.classList.toggle("on",b.dataset.v===vehicle)); $("toll").checked=avoidToll; }
+document.querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{ vehicle=b.dataset.v; store(); chips(); render(); if(dest) routeTo(dest); });
+$("toll").onchange=()=>{ avoidToll=$("toll").checked; tollBroken=false; store(); if(dest) routeTo(dest); };
+chips();
+// ---- nearby places (OpenStreetMap data via Overpass) ----
+const POI={police:{e:"🚓",s:"Police",n:"Police station",q:'["amenity"="police"]',em:1},hospital:{e:"🏥",s:"Hospital",n:"Hospital",q:'["amenity"="hospital"]',em:1},fire:{e:"🚒",s:"Fire",n:"Fire station",q:'["amenity"="fire_station"]',em:1},
+  school:{e:"🏫",s:"Schools",n:"School",q:'["amenity"="school"]'},store:{e:"🏪",s:"Stores",n:"Convenience store",q:'["shop"="convenience"]'},fuel:{e:"⛽",s:"Gas",n:"Gas station",q:'["amenity"="fuel"]'}};
+let poiOn={police:1,hospital:1,fire:1}; try{ const v=JSON.parse(localStorage.getItem("fwp")||"null"); if(v) poiOn=v; }catch(e){}
+const poiLayer=L.layerGroup().addTo(map), poiCache={}; let poiBox=null, poiKey="", poiTimer=null;
+const esc=t=>String(t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const kindOf=t=>t.amenity==="police"?"police":t.amenity==="hospital"?"hospital":t.amenity==="fire_station"?"fire":t.amenity==="school"?"school":t.shop==="convenience"?"store":t.amenity==="fuel"?"fuel":null;
+function poiChips(){
+  $("pois").innerHTML=Object.keys(POI).map(k=>`<button data-k="${k}" class="${poiOn[k]?"on":""}">${POI[k].e} ${POI[k].s}</button>`).join("");
+  $("pois").querySelectorAll("button").forEach(b=>b.onclick=()=>{ const k=b.dataset.k; poiOn[k]=poiOn[k]?0:1; try{localStorage.setItem("fwp",JSON.stringify(poiOn))}catch(e){} poiChips(); poiLoad(); });
+}
+function poiDraw(){
+  poiLayer.clearLayers(); const b=map.getBounds().pad(.3);
+  Object.values(poiCache).forEach(p=>{
+    if(!poiOn[p.kind]||!b.contains([p.lat,p.lng])) return;
+    L.marker([p.lat,p.lng],{icon:L.divIcon({className:"poi",html:`<span class="${POI[p.kind].em?"em":""}">${POI[p.kind].e}</span>`,iconSize:[30,30],iconAnchor:[15,15]}),zIndexOffset:POI[p.kind].em?500:0})
+      .bindPopup(`<b>${esc(p.name)}</b><br>${POI[p.kind].n}<div class="pv"><button onclick="goPoi('${p.k}')">🧭 Route here</button></div>`).addTo(poiLayer);
+  });
+}
+async function poiLoad(){
+  const keys=Object.keys(POI).filter(k=>poiOn[k]), note=$("pnote");
+  if(!keys.length){ poiDraw(); note.textContent=""; return; }
+  if(map.getZoom()<13){ note.textContent="Zoom in to see nearby places."; poiDraw(); return; }
+  note.textContent="";
+  const key=keys.join(), view=map.getBounds();
+  if(poiBox&&poiKey===key&&poiBox.contains(view)){ poiDraw(); return; }
+  const b=view.pad(.3);
+  const q=`[out:json][timeout:20];(${keys.map(k=>`nwr${POI[k].q}(${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()});`).join("")});out center 300;`;
+  try{
+    note.textContent="Loading places…";
+    const j=await (await fetch("https://overpass-api.de/api/interpreter",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"data="+encodeURIComponent(q)})).json();
+    j.elements.forEach(el=>{ const t=el.tags||{}, kind=kindOf(t), lat=el.lat!==undefined?el.lat:(el.center&&el.center.lat), lng=el.lon!==undefined?el.lon:(el.center&&el.center.lon);
+      if(!kind||lat==null||lng==null) return; const k=el.type[0]+el.id; poiCache[k]={k,kind,lat,lng,name:t.name||POI[kind].n}; });
+    poiBox=b; poiKey=key; note.textContent=""; poiDraw();
+  }catch(e){ note.textContent="Couldn’t load places right now."; }
+}
+window.goPoi=k=>{ const p=poiCache[k]; if(!p) return; dest=[p.lat,p.lng]; if(destMarker) map.removeLayer(destMarker); destMarker=L.marker(dest).addTo(map); $("q").value=p.name; map.closePopup(); routeTo(dest); };
+map.on("moveend",()=>{ clearTimeout(poiTimer); poiTimer=setTimeout(poiLoad,500); });
+// ---- turn-by-turn navigation ----
+let nav=null, wake=null, heading=0, curSpeed=null, sim=null;
+const brg=(a,b)=>{ const k=Math.PI/180, y=Math.sin((b[1]-a[1])*k)*Math.cos(b[0]*k), x=Math.cos(a[0]*k)*Math.sin(b[0]*k)-Math.sin(a[0]*k)*Math.cos(b[0]*k)*Math.cos((b[1]-a[1])*k); return (Math.atan2(y,x)/k+360)%360; };
+// every position update (real GPS or demo drive) comes through here
+function gotPos(lat,lng,h,sp){
+  const prev=me, first=!me; me=[lat,lng];
+  if(h!==null&&h!==undefined&&!isNaN(h)) heading=h; else if(prev&&hav(prev,me)>4) heading=brg(prev,me);
+  curSpeed=(sp!==null&&sp!==undefined&&!isNaN(sp))?sp*3.6:null;
+  if(!meMarker) meMarker=L.marker(me,{icon:L.divIcon({className:"",html:'<div class="me"><div class="rot"><b></b><i></i></div></div>',iconSize:[26,26],iconAnchor:[13,13]}),zIndexOffset:1000}).addTo(map); else meMarker.setLatLng(me);
+  const el=meMarker.getElement(), rot=el&&el.querySelector(".rot"); if(rot) rot.style.transform="rotate("+heading+"deg)";
+  if(first&&!nav) map.setView(me,15);
+  if(nav) navTick();
+}
+function endSim(){ if(sim){ if(sim.t) clearInterval(sim.t); sim=null; } }
+function runSim(co){
+  if(sim&&sim.t) clearInterval(sim.t); sim=sim||{}; let k=0;
+  sim.t=setInterval(()=>{ let acc=0;
+    while(k<co.length-1&&acc<18){ acc+=hav([co[k][1],co[k][0]],[co[k+1][1],co[k+1][0]]); k++; }
+    gotPos(co[k][1],co[k][0],null,18);
+    if(k>=co.length-1) clearInterval(sim.t);
+  },1000);
+}
+function startSim(c){
+  endNav(); sim={t:null}; const co=c.rt.geometry.coordinates;
+  gotPos(co[0][1],co[0][0],null,null);
+  startNav(c,true); runSim(co);
+}
+map.on("dragstart",()=>{ if(nav&&!nav.done){ nav.follow=false; $("navc").style.display=""; } });
+const arrow=t=>/u-turn/i.test(t)?"↩️":/arriv/i.test(t)?"🏁":/roundabout/i.test(t)?"🔄":/slight left|keep left|bear left/i.test(t)?"↖️":/slight right|keep right|bear right/i.test(t)?"↗️":/left/i.test(t)?"⬅️":/right/i.test(t)?"➡️":"⬆️";
+const fmtD=m=>m>=1000?(m/1000).toFixed(1)+" km":(Math.round(m/10)*10)+" m";
+function speak(t){ if(!nav||nav.mute||!window.speechSynthesis) return; try{ speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(t)); }catch(e){} }
+function navAlert(t,c){ $("nava").innerHTML='<div class="msg '+c+'" style="color:#16202e">'+t+'</div>'; setTimeout(()=>{ $("nava").innerHTML=""; },9000); }
+async function startNav(c,fromSim){
+  if(!me){ say("Turn on location to start navigation.","risk"); return; }
+  const S=(c.rt.steps&&c.rt.steps.length>1)?c.rt.steps:[{text:"Follow the route",dist:c.rt.distance,loc:me},{text:"You have arrived",dist:0,loc:dest}];
+  nav={rt:c.rt,S:S,i:1,pi:0,mute:nav?nav.mute:false,off:0,warned:{},said:{},lastRe:nav?nav.lastRe:0,done:false};
+  document.querySelector(".top").style.display="none"; $("nav").style.display="block";
+  $("navm").textContent=nav.mute?"🔇 Voice off":"🔊 Voice on";
+  map.setView(me,17); $("map").classList.add("navmode"); routeLayer.clearLayers();
+  nav.follow=true; nav.lp=-1; $("navc").style.display="none";
+  nav.line=L.polyline(c.rt.geometry.coordinates.map(x=>[x[1],x[0]]),{color:c.block?COL.block:c.risk?COL.risk:"#2563eb",weight:8,opacity:.95}).addTo(routeLayer);
+  if(sim&&!fromSim) runSim(c.rt.geometry.coordinates);
+  try{ if(navigator.wakeLock&&!wake) wake=await navigator.wakeLock.request("screen"); }catch(e){}
+  nav.intro="Navigation started. "+S[0].text+". ";
+  navTick();
+}
+function navTick(){
+  if(!nav||!me||nav.done) return;
+  const co=nav.rt.geometry.coordinates; let bi=nav.pi, bd=Infinity;
+  for(let k=nav.pi;k<co.length;k++){ const d=hav(me,[co[k][1],co[k][0]]); if(d<bd){ bd=d; bi=k; } }
+  nav.pi=bi; nav.off=bd>60?nav.off+1:0;
+  if(nav.off>=3&&Date.now()-nav.lastRe>15000){ reroute("You are off route. Finding a new way."); return; }
+  const S=nav.S, lastI=S.length-1;
+  let dn=hav(me,S[nav.i].loc);
+  while(nav.i<lastI&&dn<30){ nav.i++; dn=hav(me,S[nav.i].loc); }
+  const txt=S[nav.i].text, isLast=nav.i===lastI;
+  if(isLast&&dn<30){ nav.done=true; $("navi").textContent="🏁"; $("navd").textContent="Arrived"; $("navt").textContent="You have arrived"; speak("You have arrived."); setTimeout(endNav,6000); return; }
+  if(!nav.said[nav.i+"a"]){ nav.said[nav.i+"a"]=1; speak((nav.intro||"")+(dn>200?"In "+fmtD(dn)+", ":"")+txt); nav.intro=""; }
+  if(dn<=150&&!nav.said[nav.i+"b"]){ nav.said[nav.i+"b"]=1; if(dn<=150&&nav.said[nav.i+"a"]&&dn>0) speak(txt); }
+  const rem=dn+S.slice(nav.i).reduce((a,x)=>a+(x.dist||0),0), mins=Math.max(1,Math.round(rem/(nav.rt.distance/nav.rt.duration)/60));
+  $("navi").textContent=arrow(txt); $("navd").textContent=fmtD(dn); $("navt").textContent=txt;
+  $("nave").textContent=(rem/1000).toFixed(1)+" km · "+mins+" min · arrive "+new Date(Date.now()+mins*60000).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})+(curSpeed!==null?" · "+Math.round(curSpeed)+" km/h":"");
+  if(nav.pi!==nav.lp){ nav.lp=nav.pi; nav.line.setLatLngs([me].concat(co.slice(nav.pi).map(x=>[x[1],x[0]]))); }
+  if(nav.follow) map.panTo(me,{animate:true});
+}
+function navRecheck(){
+  if(!nav||!me||nav.done) return;
+  const h=hits(nav.rt.geometry.coordinates.slice(nav.pi));
+  if(h.some(r=>st(r)==="block")&&Date.now()-nav.lastRe>30000){ reroute("A flooded road was reported ahead. Finding another way."); return; }
+  const r=h.find(x=>st(x)==="risk"&&!nav.warned[x.t]);
+  if(r){ nav.warned[r.t]=1; navAlert("⚠️ Risky flooded road ahead. Drive slowly.","risk"); speak("Caution. Risky flooded road ahead. Drive slowly."); }
+}
+function reroute(msg){ nav.lastRe=Date.now(); nav.off=0; speak(msg); navAlert("🔄 "+msg,"risk"); routeTo(dest,true); }
+function endNav(){
+  if(!nav) return; nav=null; try{ speechSynthesis.cancel(); }catch(e){}
+  if(wake){ try{ wake.release(); }catch(e){} wake=null; }
+  $("nav").style.display="none"; document.querySelector(".top").style.display=""; $("map").classList.remove("navmode"); endSim(); routeLayer.clearLayers();
+}
+$("navx").onclick=endNav;
+$("navc").onclick=()=>{ if(!nav) return; nav.follow=true; $("navc").style.display="none"; if(me) map.panTo(me,{animate:true}); };
+$("navm").onclick=()=>{ if(!nav) return; nav.mute=!nav.mute; $("navm").textContent=nav.mute?"🔇 Voice off":"🔊 Voice on"; if(nav.mute){ try{ speechSynthesis.cancel(); }catch(e){} } };
+$("navr").onclick=()=>{ if(!me) return; pending={lat:me[0],lng:me[1]}; if(pendMarker) map.removeLayer(pendMarker); pendMarker=L.marker(pending).addTo(map); sheet(); };
+
+// ---- emergency help ----
+// Edit this list to add your city or barangay hotlines (please double-check numbers before launch)
+const HOTLINES=[["National Emergency Hotline","911"],["Philippine Red Cross","143"]];
+$("hot").innerHTML=HOTLINES.map(h=>`<a class="call" href="tel:${esc(h[1])}">📞 Call ${esc(h[1])} · ${esc(h[0])}</a>`).join("");
+const sosm=$("sosm");
+$("sos").onclick=()=>{ sosm.style.display="flex"; };
+$("sosx").onclick=()=>{ sosm.style.display="none"; };
+sosm.addEventListener("click",e=>{ if(e.target===sosm) sosm.style.display="none"; });
+document.querySelectorAll("[data-n]").forEach(b=>b.onclick=()=>nearest(b.dataset.n));
+async function nearest(kind){
+  const c=map.getCenter(), o=me||[c.lat,c.lng];
+  sosm.style.display="none"; say(`Finding the nearest ${POI[kind].n.toLowerCase()}…`,"info");
+  try{
+    const q=`[out:json][timeout:20];nwr${POI[kind].q}(around:10000,${o[0]},${o[1]});out center 40;`;
+    const j=await (await fetch("https://overpass-api.de/api/interpreter",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"data="+encodeURIComponent(q)})).json();
+    let best=null, bd=Infinity;
+    j.elements.forEach(el=>{ const t=el.tags||{}, lat=el.lat!==undefined?el.lat:(el.center&&el.center.lat), lng=el.lon!==undefined?el.lon:(el.center&&el.center.lon);
+      if(lat==null||lng==null) return; const k=el.type[0]+el.id; poiCache[k]={k,kind,lat,lng,name:t.name||POI[kind].n};
+      const d=hav(o,[lat,lng]); if(d<bd){ bd=d; best=k; } });
+    if(!best){ say(`No ${POI[kind].n.toLowerCase()} found within 10 km in the map data. If it’s urgent, call 911.`,"risk"); return; }
+    poiOn[kind]=1; poiChips(); goPoi(best);
+  }catch(e){ say("Couldn’t search right now. If it’s urgent, call 911.","risk"); }
+}
+// ---- live traffic layer (TomTom) ----
+if(TOMTOM_KEY){
+  $("trfrow").style.display="flex";
+  const trafficLayer=L.tileLayer("https://api.tomtom.com/traffic/map/4/tile/flow/relative/{z}/{x}/{y}.png?key="+TOMTOM_KEY,{maxZoom:22,opacity:.8});
+  let on=false; try{ on=localStorage.getItem("fwt")==="1"; }catch(e){}
+  const apply=()=>{ if(on) trafficLayer.addTo(map); else map.removeLayer(trafficLayer); $("trf").classList.toggle("on",on); try{ localStorage.setItem("fwt",on?"1":"0"); }catch(e){} };
+  $("trf").onclick=()=>{ on=!on; apply(); }; apply();
+}
+poiChips(); poiLoad();
+idle(); render(); locate(); pull(); setInterval(async()=>{ await pull(); render(); if(nav) navRecheck(); },10000);
+</script>
+<script>
+// Makes the page installable and lets it open offline (map data still needs internet)
+if("serviceWorker" in navigator && (location.protocol==="https:"||location.hostname==="localhost")){
+  window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+}
+</script>
+</body>
+</html>
