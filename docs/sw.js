@@ -1,6 +1,6 @@
 // FloodWatch service worker: keeps the app shell available offline.
 // Map tiles, routing, traffic and reports always come from the network.
-const V = "floodwatch-v1";
+const V = "floodwatch-v2";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png",
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css",
   "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"];
