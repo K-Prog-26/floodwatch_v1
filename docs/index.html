@@ -102,14 +102,14 @@ button{font:inherit;cursor:pointer}
 const DB = ""; // (old setting, no longer used – Firebase below replaces it)
 // Shared reports + sign-in + admin: create a free Firebase project and paste its web-app config here (see FIREBASE-SETUP.md).
 // Leave apiKey empty to run in "this device only" mode.
-const FB_CONFIG = { apiKey:"", authDomain:"", databaseURL:"", projectId:"", appId:"" };
+const FB_CONFIG = { apiKey:"AIzaSyDM_0D3_5WMLWBRiXxap7j2_6FsjHuS5Ug", authDomain:"floodwatch-v1.firebaseapp.com", databaseURL:"https://floodwatch-v1-default-rtdb.asia-southeast1.firebasedatabase.app", projectId:"floodwatch-v1", appId:"1:523645522276:web:f49354d12dd3bc0df6ea71" };
 const FB_ON = !!FB_CONFIG.apiKey && typeof firebase !== "undefined";
 // For real toll avoidance + precise flood avoidance: get a FREE key at https://openrouteservice.org (Sign up > Dashboard > Request a token)
 // and paste it here. Leave empty to use the basic free router.
 const ORS_KEY = "";
 // TomTom (recommended): live-traffic routing, motorcycle mode, toll + flood-zone avoidance, search and traffic map.
 // Free key at https://developer.tomtom.com (Sign up > Dashboard > Keys). Paste it here:
-const TOMTOM_KEY = "";
+const TOMTOM_KEY = "bT1Tg9UK2DxHbFQ4L89RYp9vL8tcy2Ze";
 const TT_MODE = {moto:"motorcycle", car:"car", puv:"bus"};
 let engine = "";
 const PROFILE = {moto:"driving-car", car:"driving-car", puv:"driving-car"}; // OpenRouteService has no motorcycle profile
