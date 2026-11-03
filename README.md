@@ -3,6 +3,8 @@
 Community flood map with safe routing and turn-by-turn navigation.
 
 ## Folder layout
+- `FIREBASE-SETUP.md` – step-by-step guide for shared reports, sign-in and the admin account
+- `firebase/database.rules.json` – security rules to paste into Firebase
 - `docs/` – the whole app (this folder is what gets hosted, and what the Android build will use later)
   - `index.html` – the app (put your keys at the top of its script)
   - `manifest.webmanifest`, `sw.js`, `icon-*.png` – make it installable on phones
@@ -17,7 +19,7 @@ Community flood map with safe routing and turn-by-turn navigation.
 Open `docs/index.html` and fill in near the top of the script:
 - `TOMTOM_KEY` – from developer.tomtom.com
 - `ORS_KEY` – optional, from openrouteservice.org
-- `DB` – optional, your Firebase Realtime Database URL (for live shared reports)
+- `FB_CONFIG` – your Firebase web-app settings (shared reports, sign-in, admin). See `FIREBASE-SETUP.md`
 
 In your TomTom dashboard, add `YOUR-USERNAME.github.io` as an allowed domain for the key.
 

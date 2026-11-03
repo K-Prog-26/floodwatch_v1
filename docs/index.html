@@ -36,6 +36,7 @@ button{font:inherit;cursor:pointer}
 .me{width:26px;height:26px}.me .rot{position:relative;width:26px;height:26px}.me i{position:absolute;left:4px;top:4px;width:18px;height:18px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 3px rgba(37,99,235,.28)}
 .me b{display:none;position:absolute;left:6px;top:-9px;border:7px solid transparent;border-bottom:13px solid #2563eb;filter:drop-shadow(0 0 2px #fff)}.navmode .me b{display:block}
 .navb{position:absolute;z-index:1000;top:calc(10px + env(safe-area-inset-top,0px));left:10px;right:10px;max-width:470px;background:#16202e;color:#fff;border-radius:16px;padding:12px;box-shadow:0 4px 18px rgba(0,0,0,.35)}
+.arow{border-top:1px solid #e5eaf2;padding:8px 0;display:grid;gap:6px;font-size:.85rem}.arow .nb{padding:6px 9px;font-size:.78rem}
 .mc{background:#fff;border-radius:18px;padding:16px;width:100%;max-width:380px;display:grid;gap:8px;max-height:90vh;overflow:auto}
 .call{display:block;padding:13px;border-radius:12px;background:#e04545;color:#fff;text-align:center;font-weight:600;text-decoration:none}
 .nb{padding:12px;border:2px solid #dde4ee;background:#f6f8fb;border-radius:12px;font-size:.92rem}
@@ -53,6 +54,7 @@ button{font:inherit;cursor:pointer}
     <input id="q" placeholder="Where to? (e.g. SM Mall of Asia)" aria-label="Destination">
     <button class="go" id="go">Go</button>
     <button class="ic" id="loc" title="My location" aria-label="Go to my location">📍</button>
+    <button class="ic" id="acc" title="Account" aria-label="Account" style="display:none">👤</button>
     <button class="ic" id="sos" title="Emergency help" aria-label="Emergency help" style="border-color:#e04545">🆘</button>
     <button class="ic" id="clr" title="Clear route" aria-label="Clear route" style="display:none">✕</button>
   </div>
@@ -61,7 +63,7 @@ button{font:inherit;cursor:pointer}
   <div class="small" style="margin-top:8px">Show on map:</div><div class="pois" id="pois" style="margin-top:4px"></div><div class="small" id="pnote"></div>
   <div class="pois" id="trfrow" style="margin-top:6px"><button id="sat">🛰️ Satellite</button><button id="trf" style="display:none">🚦 Live traffic</button></div>
   <div id="res"></div>
-  <div class="leg"><span><i style="background:#1fa463"></i>Passable</span><span><i style="background:#f0a020"></i>Risky</span><span><i style="background:#e04545"></i>Not passable</span><span id="sync"></span></div>
+  <div class="leg"><span><i style="background:#1fa463"></i>Passable</span><span><i style="background:#f0a020"></i>Risky</span><span><i style="background:#e04545"></i>Not passable</span><span>┄ Dashed = unverified</span><span id="sync"></span></div>
 </div>
 <div class="navb" id="nav" style="display:none">
   <div class="row" style="align-items:center"><div id="navi" style="font-size:2.4rem;line-height:1">⬆️</div>
@@ -70,6 +72,16 @@ button{font:inherit;cursor:pointer}
   <div class="row" style="margin-top:8px"><button class="nb" id="navm" style="flex:1">🔊 Voice on</button><button class="nb" id="navr" style="flex:1">🌊 Report</button><button class="nb" id="navc" style="display:none">🎯</button><button class="nb" id="navx" style="flex:1;color:#e04545">End</button></div>
 </div>
 <div class="sheet" id="sheet"></div>
+<div id="acm" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.45);align-items:center;justify-content:center;padding:16px"><div class="mc" id="acb"></div></div>
+<div id="adm" style="display:none;position:fixed;inset:0;z-index:2050;background:rgba(0,0,0,.5);align-items:center;justify-content:center;padding:16px">
+  <div class="mc" style="max-width:480px"><b style="font-size:1.05rem">🛡️ Admin – reports (last 24 h)</b>
+    <div class="small">Flagged reports are listed first. Reports with 3 or more flags are hidden from the public map until you review them.</div>
+    <div id="adl"></div><button class="nb" id="adx">Close</button></div>
+</div>
+<div id="phm" style="display:none;position:fixed;inset:0;z-index:2100;background:rgba(0,0,0,.8);align-items:center;justify-content:center;padding:16px;flex-direction:column;gap:10px">
+  <img id="phi" alt="Flood report photo" style="max-width:100%;max-height:75vh;border-radius:12px"><div id="phn" style="color:#fff"></div>
+  <button class="nb" id="phx">Close</button>
+</div>
 <div id="sosm" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.45);align-items:center;justify-content:center;padding:16px">
   <div class="mc" role="dialog" aria-label="Emergency help">
     <b style="font-size:1.05rem">🆘 Emergency help</b>
@@ -81,16 +93,23 @@ button{font:inherit;cursor:pointer}
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
 // ---- SETTINGS ----
 // For LIVE sharing between users: paste your Firebase Realtime Database URL, e.g. "https://my-app-default-rtdb.firebaseio.com"
-const DB = "";
+const DB = ""; // (old setting, no longer used – Firebase below replaces it)
+// Shared reports + sign-in + admin: create a free Firebase project and paste its web-app config here (see FIREBASE-SETUP.md).
+// Leave apiKey empty to run in "this device only" mode.
+const FB_CONFIG = { apiKey:"", authDomain:"", databaseURL:"", projectId:"", appId:"" };
+const FB_ON = !!FB_CONFIG.apiKey && typeof firebase !== "undefined";
 // For real toll avoidance + precise flood avoidance: get a FREE key at https://openrouteservice.org (Sign up > Dashboard > Request a token)
 // and paste it here. Leave empty to use the basic free router.
 const ORS_KEY = "";
 // TomTom (recommended): live-traffic routing, motorcycle mode, toll + flood-zone avoidance, search and traffic map.
 // Free key at https://developer.tomtom.com (Sign up > Dashboard > Keys). Paste it here:
-const TOMTOM_KEY = "bT1Tg9UK2DxHbFQ4L89RYp9vL8tcy2Ze";
+const TOMTOM_KEY = "";
 const TT_MODE = {moto:"motorcycle", car:"car", puv:"bus"};
 let engine = "";
 const PROFILE = {moto:"driving-car", car:"driving-car", puv:"driving-car"}; // OpenRouteService has no motorcycle profile
@@ -119,13 +138,14 @@ const eff=(r,v)=>{const a=SH[v][r.s],b=DR[v][r.d];return RANK[a]>=RANK[b]?a:b};
 let vehicle="car", avoidToll=false, tollBroken=false;
 try{const v=JSON.parse(localStorage.getItem("fwv")||"{}"); if(VEH[v.vehicle]) vehicle=v.vehicle; avoidToll=!!v.avoidToll;}catch(e){}
 const st=r=>eff(r,vehicle);
+let user=null, isAdmin=false, banned=false, flags={}, fbdb=null, fbauth=null;
 let me=null, meMarker=null, dest=null, destMarker=null, reports=[], pick="ok", depth=0, pending=null, pendMarker=null, lastSent=0;
 const layer = L.layerGroup().addTo(map), routeLayer = L.layerGroup().addTo(map);
-$("sync").textContent = (DB ? "🟢 Live sync on" : "⚪ Reports saved on this device only") + (TOMTOM_KEY ? " · 🚦 TomTom routing + traffic on" : ORS_KEY ? " · 🧭 Smart routing on" : "");
+$("sync").textContent = (FB_ON ? "🟢 Live sync on" : "⚪ Reports saved on this device only") + (TOMTOM_KEY ? " · 🚦 TomTom routing + traffic on" : ORS_KEY ? " · 🧭 Smart routing on" : "");
 
 // ---- storage / sync ----
-const valid = r => r && COL[r.s] && DEPTH[r.d] && isFinite(r.lat) && isFinite(r.lng) && isFinite(r.t);
-try { reports = JSON.parse(localStorage.getItem("fwl")||"[]").filter(valid); } catch(e){}
+const valid = r => { if(!(r && COL[r.s] && DEPTH[r.d] && isFinite(r.lat) && isFinite(r.lng) && isFinite(r.t))) return false; if(r.id!==undefined && !/^[a-z0-9]{6,24}$/.test(String(r.id))) return false; r.v=(r.v===1||r.v===2)?r.v:0; r.av=r.av===1?1:0; return true; };
+if(!FB_ON) try { reports = JSON.parse(localStorage.getItem("fwl")||"[]").filter(valid).filter(r=>Date.now()-r.t<24*3600e3); } catch(e){}
 const saveLocal = () => { try{ localStorage.setItem("fwl", JSON.stringify(reports)); }catch(e){} };
 async function pull(){
   if(!DB) return;
@@ -134,8 +154,18 @@ async function pull(){
 async function push(r){ if(DB) try{ await fetch(DB+"/reports.json",{method:"POST",body:JSON.stringify(r)}); }catch(e){} }
 const live = () => reports.filter(r => Date.now()-r.t < EXPIRE_HOURS*3600e3);
 // newest report within ~NEAR_M of each other wins (so "cleared" overrides older "blocked")
+const flagN=r=>{ const f=r.id&&flags[r.id]; return f?Object.keys(f).length:0; };
+const trust=r=>r.av?3:(r.v||0);
+const disputed=r=>!r.av&&flagN(r)>=3&&(r.v||0)<2;   // hidden until an admin reviews it
 function current(){
-  const out=[]; live().sort((a,b)=>b.t-a.t).forEach(r=>{ if(!out.some(o=>hav([o.lat,o.lng],[r.lat,r.lng])<NEAR_M)) out.push(r); }); return out;
+  const all=live().filter(r=>!disputed(r)).sort((a,b)=>b.t-a.t), out=[];
+  all.forEach(r=>{
+    if(out.some(o=>hav([o.lat,o.lng],[r.lat,r.lng])<NEAR_M)) return;
+    // a "passable/cleared" report only replaces a flood report if it is at least as well verified
+    if(r.s==="ok" && all.some(x=>x.s!=="ok" && trust(x)>trust(r) && hav([x.lat,x.lng],[r.lat,r.lng])<NEAR_M)) return;
+    out.push(r);
+  });
+  return out;
 }
 const ago = t => { const m=Math.round((Date.now()-t)/60000); return m<1?"just now":m<60?m+" min ago":Math.round(m/60)+" h ago"; };
 
@@ -143,27 +173,198 @@ const ago = t => { const m=Math.round((Date.now()-t)/60000); return m<1?"just no
 function render(){
   layer.clearLayers();
   current().forEach(r => {
-    L.circle([r.lat,r.lng],{radius:NEAR_M*0.7,color:COL[st(r)],fillColor:COL[st(r)],fillOpacity:.35,weight:2})
-      .bindPopup(`<b>${LBL[st(r)]}</b> for ${VEH[vehicle]}<br>${DEPTH[r.d]} · ${ago(r.t)}
-        <div class="pv"><button onclick="vote(${r.t},'${r.s}')">👍 Still true</button><button onclick="vote(${r.t},'ok')">✅ It’s cleared</button></div>`).addTo(layer);
+    L.circle([r.lat,r.lng],{radius:NEAR_M*0.7,color:COL[st(r)],fillColor:COL[st(r)],fillOpacity:.35,weight:(r.v===2?4:2),dashArray:(r.v>=1?null:"5 5")})
+      .bindPopup(`<b>${LBL[st(r)]}</b> for ${VEH[vehicle]}<br>${DEPTH[r.d]} · ${ago(r.t)}<br>${badge(r)}${r.ph&&r.id?`<div class="pv"><button onclick="showPhoto('${r.id}')">📷 View photo</button></div>`:""}
+        <div class="pv"><button onclick="vote(${r.t},'${r.s}')">👍 Still true</button><button onclick="vote(${r.t},'ok')">✅ It’s cleared</button>${r.id?`<button onclick="flagReport('${r.id}')">🚩 Flag</button>`:""}</div>`).addTo(layer);
   });
 }
-window.vote = (id,s) => {
-  const o = reports.find(r=>r.t===id); if(!o||!cool()) return;
-  addReport({lat:o.lat,lng:o.lng,s,d:s==="ok"?0:o.d,t:Date.now()}); map.closePopup();
+window.vote = async (id,s) => {
+  const o = reports.find(r=>r.t===id); if(!o||!cool()||!gate()) return;
+  map.closePopup(); addReport(await makeReport(o.lat,o.lng,s,s==="ok"?0:o.d,null));
 };
 const cool = () => { const w = COOLDOWN_S-(Date.now()-lastSent)/1000; if(w>0){ say(`Please wait ${Math.ceil(w)}s before sending another report.`,"risk"); return false; } return true; };
-function addReport(r){ reports.push(r); lastSent=Date.now(); saveLocal(); push(r); render(); if(dest&&!nav) routeTo(dest); if(nav) navRecheck(); idle("Thank you! 🙌","Your report helps others avoid flooded roads."); }
+async function addReport(r){
+  reports.push(r); render();
+  if(FB_ON){
+    try{ const o={lat:r.lat,lng:r.lng,s:r.s,d:r.d,v:r.v,uid:user.uid,t:firebase.database.ServerValue.TIMESTAMP};
+      if(r.pk) o.pk=r.pk; if(r.rd!==undefined) o.rd=r.rd; if(r.ph) o.ph=1;
+      await fbdb.ref("reports/"+r.id).set(o); }
+    catch(e){ reports=reports.filter(x=>x!==r); render(); idle("Couldn’t send your report","Please check your connection and sign-in, then try again."); return; }
+  } else saveLocal();
+  lastSent=Date.now(); if(dest&&!nav) routeTo(dest); if(nav) navRecheck();
+  idle("Thank you! 🙌",(r.v===2?"Photo-verified report 📸. ":r.v===1?"Location-verified report 📍. ":"Unverified report. Turn on location or add a photo for more trust. ")+"It helps others avoid flooded roads.");
+}
 function say(t,c){ $("res").innerHTML = `<div class="msg ${c}">${t}</div>`; }
 
 // ---- location ----
 function locate(){
   if(!navigator.geolocation){ say("Location isn’t available on this device.","info"); return; }
   navigator.geolocation.watchPosition(p => {
-    if(sim) return; gotPos(p.coords.latitude,p.coords.longitude,p.coords.heading,p.coords.speed);
+    if(sim) return; gotPos(p.coords.latitude,p.coords.longitude,p.coords.heading,p.coords.speed,p.coords.accuracy);
   },()=>say("Location is off, so directions start from the map center. Allow location access for best results.","info"),{enableHighAccuracy:true});
 }
 $("loc").onclick = () => { if(me) map.setView(me,16); else locate(); };
+
+// ---- accounts, flags and admin (Firebase) ----
+function gate(){
+  if(!FB_ON) return true;
+  if(!user){ openAuth("Sign in to send reports. It keeps the map trustworthy."); return false; }
+  if(!user.emailVerified){ openAuth("Please verify your email first."); return false; }
+  if(banned){ idle("Account restricted","Your account can’t send reports right now."); return false; }
+  return true;
+}
+function authErr(e){ const m={"auth/invalid-credential":"Wrong email or password.","auth/wrong-password":"Wrong email or password.","auth/user-not-found":"No account with that email.","auth/email-already-in-use":"That email already has an account. Try Sign in.","auth/weak-password":"Password needs at least 6 characters.","auth/invalid-email":"That email doesn’t look right.","auth/popup-closed-by-user":"Sign-in was cancelled.","auth/unauthorized-domain":"This website address isn’t authorized in Firebase yet.","auth/too-many-requests":"Too many tries. Please wait a bit."}; return m[e&&e.code]||((e&&e.message)||"Something went wrong."); }
+function openAuth(msg){ $("acm").style.display="flex"; renderAccount(msg); }
+function renderAccount(msg){
+  if(!FB_ON) return; const box=$("acb"), err=t=>{ $("aerr").innerHTML='<div class="msg risk">'+esc(t)+'</div>'; };
+  if(!user){
+    box.innerHTML='<b>Sign in to report</b><div class="small">Anyone can view the map. Reports need a verified account to stop fake news.</div>'+(msg?'<div class="msg risk">'+esc(msg)+'</div>':"")+
+      '<button class="nb" id="agoog">Continue with Google</button><input id="aem" type="email" placeholder="Email" autocomplete="email"><input id="apw" type="password" placeholder="Password (6+ characters)" autocomplete="current-password">'+
+      '<div class="row"><button class="go" id="ain" style="flex:1;padding:11px">Sign in</button><button class="nb" id="aup" style="flex:1">Create account</button></div><div id="aerr"></div><button class="nb" id="acx">Close</button>';
+    $("agoog").onclick=async()=>{ try{ await fbauth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }catch(e){ err(authErr(e)); } };
+    $("ain").onclick=async()=>{ try{ await fbauth.signInWithEmailAndPassword($("aem").value.trim(),$("apw").value); }catch(e){ err(authErr(e)); } };
+    $("aup").onclick=async()=>{ try{ const c=await fbauth.createUserWithEmailAndPassword($("aem").value.trim(),$("apw").value); await c.user.sendEmailVerification(); }catch(e){ err(authErr(e)); } };
+  } else {
+    box.innerHTML='<b>👤 '+esc(user.displayName||user.email||"Signed in")+'</b><div class="small">'+esc(user.email||"")+'</div>'+
+      (user.emailVerified?'<div class="msg ok">✅ Email verified. You can send reports.</div>':'<div class="msg risk">Please verify your email. We sent you a link.<div class="row" style="margin-top:6px"><button class="nb" id="averi" style="flex:1">I’ve verified</button><button class="nb" id="aresend" style="flex:1">Resend</button></div></div>')+
+      (banned?'<div class="msg block">This account is restricted.</div>':"")+
+      '<div class="small">Your user ID (needed once to make an admin):<br><code id="auid" style="word-break:break-all">'+esc(user.uid)+'</code></div><button class="nb" id="acopy">Copy ID</button>'+
+      (isAdmin?'<button class="go" id="aadm" style="padding:11px">🛡️ Admin panel</button>':"")+'<div id="aerr"></div><button class="nb" id="aout">Sign out</button><button class="nb" id="acx">Close</button>';
+    if($("averi")) $("averi").onclick=async()=>{ try{ await user.reload(); await user.getIdToken(true); user=fbauth.currentUser; renderAccount(); }catch(e){ err(authErr(e)); } };
+    if($("aresend")) $("aresend").onclick=async()=>{ try{ await user.sendEmailVerification(); err("Verification email sent. Check your inbox and spam folder."); }catch(e){ err(authErr(e)); } };
+    $("acopy").onclick=()=>{ try{ navigator.clipboard.writeText(user.uid); $("acopy").textContent="Copied ✓"; }catch(e){} };
+    if($("aadm")) $("aadm").onclick=()=>{ $("acm").style.display="none"; $("adm").style.display="flex"; renderAdmin(); };
+    $("aout").onclick=()=>fbauth.signOut();
+  }
+  $("acx").onclick=()=>{ $("acm").style.display="none"; };
+}
+function renderAdmin(){
+  const rows=reports.filter(r=>r.id).sort((a,b)=>flagN(b)-flagN(a)||b.t-a.t).slice(0,60);
+  $("adl").innerHTML=rows.length?rows.map(r=>'<div class="arow"><div><b style="color:'+COL[r.s]+'">'+LBL[r.s]+'</b> · '+DEPTH[r.d]+' · '+ago(r.t)+(disputed(r)?' · <b>hidden</b>':'')+'<br><span class="small">'+badge(r)+' · by '+esc(String(r.uid||"?").slice(0,6))+'</span></div><div class="row" style="flex-wrap:wrap">'+
+    '<button class="nb" data-a="go" data-i="'+r.id+'">📍 Show</button>'+(r.ph?'<button class="nb" data-a="ph" data-i="'+r.id+'">📷 Photo</button>':"")+(r.av?"":'<button class="nb" data-a="ok" data-i="'+r.id+'">✅ Confirm</button>')+(flagN(r)?'<button class="nb" data-a="fl" data-i="'+r.id+'">Clear flags</button>':"")+
+    '<button class="nb" data-a="del" data-i="'+r.id+'">🗑 Delete</button><button class="nb" data-a="ban" data-i="'+r.id+'">🚫 Ban user</button></div></div>').join(""):'<div class="small">No reports in the last 24 hours.</div>';
+  $("adl").querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>adminAct(b.dataset.a,b.dataset.i));
+}
+async function adminAct(a,id){
+  const r=reports.find(x=>x.id===id); if(!r||!isAdmin) return;
+  try{
+    if(a==="go"){ $("adm").style.display="none"; map.setView([r.lat,r.lng],17); }
+    else if(a==="ph") showPhoto(id);
+    else if(a==="ok") await fbdb.ref("reports/"+id+"/av").set(1);
+    else if(a==="fl") await fbdb.ref("flags/"+id).remove();
+    else if(a==="del"){ if(!confirm("Delete this report?")) return; await fbdb.ref("reports/"+id).remove(); fbdb.ref("photos/"+id).remove().catch(()=>{}); fbdb.ref("flags/"+id).remove().catch(()=>{}); }
+    else if(a==="ban"){ if(!r.uid||!confirm("Ban this reporter and delete all their reports from the last 24 hours?")) return;
+      await fbdb.ref("banned/"+r.uid).set(true);
+      for(const x of reports.filter(y=>y.uid===r.uid&&y.id)){ await fbdb.ref("reports/"+x.id).remove(); fbdb.ref("photos/"+x.id).remove().catch(()=>{}); } }
+  }catch(e){ alert("Action failed: "+((e&&e.message)||e)); }
+  renderAdmin();
+}
+window.flagReport=async id=>{
+  if(!FB_ON){ idle("Flagging needs the shared database","Set up Firebase to turn this on."); return; }
+  if(!user||!user.emailVerified){ map.closePopup(); openAuth("Sign in with a verified account to flag a report."); return; }
+  try{ await fbdb.ref("flags/"+id+"/"+user.uid).set(true); map.closePopup(); idle("Thanks, report flagged 🚩","Reports flagged by several people are hidden until an admin reviews them."); }
+  catch(e){ idle("Couldn’t flag this report","Please try again."); }
+};
+function initFirebase(){
+  if(!FB_ON) return;
+  firebase.initializeApp(FB_CONFIG); fbauth=firebase.auth(); fbdb=firebase.database();
+  $("acc").style.display=""; $("acc").onclick=()=>openAuth();
+  $("acm").addEventListener("click",e=>{ if(e.target===$("acm")) $("acm").style.display="none"; });
+  $("adx").onclick=()=>{ $("adm").style.display="none"; };
+  fbauth.onAuthStateChanged(async u=>{
+    user=u; isAdmin=false; banned=false; renderAccount();
+    if(u){ try{ isAdmin=(await fbdb.ref("admins/"+u.uid).get()).val()===true; }catch(e){} try{ banned=(await fbdb.ref("banned/"+u.uid).get()).exists(); }catch(e){} renderAccount(); }
+  });
+  fbdb.ref("reports").orderByChild("t").startAt(Date.now()-24*3600e3).on("value",snap=>{
+    const o=snap.val()||{}; reports=Object.keys(o).map(k=>Object.assign({id:k},o[k])).filter(valid);
+    render(); if(nav) navRecheck(); if($("adm").style.display==="flex") renderAdmin(); },()=>{});
+  fbdb.ref("flags").on("value",snap=>{ flags=snap.val()||{}; render(); if($("adm").style.display==="flex") renderAdmin(); },()=>{});
+}
+
+// ---- photo proof + verification ----
+let photo=null, meFix=null; const photoMem={};
+const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36);
+function readTiff(v,t){
+  const le=v.getUint16(t)===0x4949, u16=p=>v.getUint16(p,le), u32=p=>v.getUint32(p,le);
+  const ifd=p=>{ const n=u16(p), o={}; for(let i=0;i<n;i++){ const e=p+2+i*12; o[u16(e)]={cnt:u32(e+4),val:e+8}; } return o; };
+  const rat=p=>u32(p)/u32(p+4), dms=e=>{ const p=t+u32(e.val); return rat(p)+rat(p+8)/60+rat(p+16)/3600; };
+  const str=e=>{ const p=e.cnt>4?t+u32(e.val):e.val; let s=""; for(let i=0;i<e.cnt-1;i++) s+=String.fromCharCode(v.getUint8(p+i)); return s; };
+  const i0=ifd(t+u32(t+4)); let lat=null,lng=null,ts=null;
+  if(i0[0x8769]){ const ex=ifd(t+u32(i0[0x8769].val)); if(ex[0x9003]){ const m=str(ex[0x9003]).match(/(\d+):(\d+):(\d+) (\d+):(\d+):(\d+)/); if(m) ts=new Date(+m[1],m[2]-1,+m[3],+m[4],+m[5],+m[6]).getTime(); } }
+  if(i0[0x8825]){ const g=ifd(t+u32(i0[0x8825].val));
+    if(g[2]&&g[4]){ lat=dms(g[2]); lng=dms(g[4]); if(g[1]&&str(g[1])[0]==="S") lat=-lat; if(g[3]&&str(g[3])[0]==="W") lng=-lng; } }
+  return {lat:isFinite(lat)?lat:null,lng:isFinite(lng)?lng:null,t:ts};
+}
+function exifGPS(buf){
+  try{ const v=new DataView(buf); if(v.getUint16(0)!==0xFFD8) return null; let o=2;
+    while(o<v.byteLength-4){ const m=v.getUint16(o), len=v.getUint16(o+2);
+      if(m===0xFFE1&&v.getUint32(o+4)===0x45786966) return readTiff(v,o+10);
+      if((m&0xFF00)!==0xFF00) break; o+=2+len; } }catch(e){}
+  return null;
+}
+// shrink + re-encode: removes hidden metadata (privacy), adds a visible time stamp
+function shrink(file){ return new Promise((res,rej)=>{ const u=URL.createObjectURL(file), im=new Image();
+  im.onload=()=>{ const k=Math.min(1,900/Math.max(im.width,im.height)), c=document.createElement("canvas"); c.width=Math.round(im.width*k); c.height=Math.round(im.height*k);
+    const g=c.getContext("2d"); g.drawImage(im,0,0,c.width,c.height); URL.revokeObjectURL(u);
+    const t="FloodWatch · "+new Date().toLocaleString([],{day:"numeric",month:"short",year:"numeric",hour:"numeric",minute:"2-digit"});
+    g.font="bold "+Math.max(12,Math.round(c.width/38))+"px sans-serif"; const h=Math.max(20,Math.round(c.width/24));
+    g.fillStyle="rgba(0,0,0,.55)"; g.fillRect(0,c.height-h,c.width,h); g.fillStyle="#fff"; g.textBaseline="middle"; g.fillText(t,8,c.height-h/2);
+    res(c.toDataURL("image/jpeg",.62)); };
+  im.onerror=()=>{ URL.revokeObjectURL(u); rej(new Error("img")); }; im.src=u; }); }
+async function takePhoto(file,src){
+  if(!file) return;
+  try{ const ex=exifGPS(await file.arrayBuffer()), url=await shrink(file); photo={url:url,src:src,ex:ex,mod:file.lastModified||Date.now()}; sheet(); }
+  catch(e){ idle("Couldn’t read that photo","Try another one, or take a new picture."); }
+}
+function getFix(){ return new Promise(res=>{
+  if(meFix&&Date.now()-meFix.t<60000) return res(meFix);
+  if(!navigator.geolocation) return res(null);
+  navigator.geolocation.getCurrentPosition(p=>res({lat:p.coords.latitude,lng:p.coords.longitude,acc:p.coords.accuracy,t:Date.now()}),()=>res(null),{enableHighAccuracy:true,timeout:6000,maximumAge:30000}); }); }
+// level 2 = photo proof matched to the spot, 1 = reporter's phone was at the spot, 0 = unverified
+function verify(r,fix,ph){
+  const R=150, present=!!fix&&hav([fix.lat,fix.lng],[r.lat,r.lng])<=R+Math.min(fix.acc||0,50);
+  if(ph){
+    const ex=ph.ex;
+    if(ex&&ex.lat!==null){ const fresh=!ex.t||(Date.now()-ex.t<EXPIRE_HOURS*3600e3&&ex.t<Date.now()+600e3);
+      if(fresh&&hav([ex.lat,ex.lng],[r.lat,r.lng])<=R) return {level:2,kind:"geo"}; }
+    else if(ph.src==="cam"&&present&&Date.now()-ph.mod<15*60e3) return {level:2,kind:"live"};
+  }
+  return {level:present?1:0,kind:""};
+}
+async function makeReport(lat,lng,s,d,ph){
+  const fix=await getFix(), r={id:uid(),lat:lat,lng:lng,s:s,d:d,t:Date.now()}, v=verify(r,fix,ph);
+  r.v=v.level; if(fix) r.rd=Math.round(hav([fix.lat,fix.lng],[lat,lng]));
+  if(ph){ try{ await savePhoto(r.id,ph.url); r.ph=1; r.pk=v.kind; }catch(e){ r.v=Math.min(r.v,1); } }
+  return r;
+}
+async function savePhoto(id,url){
+  photoMem[id]=url;
+  if(FB_ON){ await fbdb.ref("photos/"+id).set({u:user.uid,d:url}); return; }
+  try{ localStorage.setItem("fwph:"+id,url); }catch(e){}
+}
+async function loadPhoto(id){
+  if(photoMem[id]) return photoMem[id];
+  if(FB_ON){ try{ const u=(await fbdb.ref("photos/"+id+"/d").get()).val(); if(typeof u==="string"&&u.indexOf("data:image/jpeg;base64,")===0){ photoMem[id]=u; return u; } }catch(e){} return null; }
+  try{ const l=localStorage.getItem("fwph:"+id); if(l){ photoMem[id]=l; return l; } }catch(e){}
+  return null;
+}
+window.showPhoto=async id=>{
+  $("phi").removeAttribute("src"); $("phn").textContent="Loading…"; $("phm").style.display="flex";
+  const u=await loadPhoto(id);
+  if(u&&u.indexOf("data:image/jpeg;base64,")===0){ $("phi").src=u; $("phn").textContent=""; } else $("phn").textContent="Photo isn’t available right now.";
+};
+$("phx").onclick=()=>{ $("phm").style.display="none"; };
+$("phm").addEventListener("click",e=>{ if(e.target===$("phm")) $("phm").style.display="none"; });
+function badge(r){ const n=flagN(r), fl=n>0?" · 🚩 "+n+(n===1?" flag":" flags"):""; return (r.av?'<span style="color:#1e8449">🛡️ Confirmed by admin</span>':badge0(r))+fl; }
+function badge0(r){
+  const far=(r.rd!==undefined&&r.rd>300)?" · reported from "+(r.rd>=1000?(r.rd/1000).toFixed(1)+" km":r.rd+" m")+" away":"";
+  if(r.v===2) return '<span style="color:#1e8449">📸 Photo-verified'+(r.pk==="geo"?" (GPS-tagged photo)":r.pk==="live"?" (live photo on location)":"")+'</span>';
+  if(r.v===1) return '<span style="color:#1e8449">📍 Reporter was on location</span>'+(r.ph?" · 📷 photo (location not matched)":"");
+  return '<span style="color:#7a8798">⚪ Unverified'+(r.ph?" · 📷 photo attached":"")+far+'</span>';
+}
+// drop saved photos whose reports are gone
+try{ const ids={}; reports.forEach(r=>{ if(r.id) ids[r.id]=1; });
+  Object.keys(localStorage).forEach(k=>{ if(k.indexOf("fwph:")===0&&!ids[k.slice(5)]) localStorage.removeItem(k); }); }catch(e){}
 
 // ---- reporting ----
 function idle(a,b){ $("sheet").innerHTML = `<b>${a||"📍 Tap the map where you see flooding"}</b><div class="small">${b||"Then tell others if light vehicles can get through."}</div><div class="small" style="margin-top:6px">⚠️ Never drive through floodwater you can’t see the bottom of.</div>`; }
@@ -173,13 +374,21 @@ function sheet(){
   <div class="opts">${[["ok","✅","Passable"],["risk","⚠️","Risky"],["block","⛔","Not passable"]].map(o=>`<button class="opt ${pick===o[0]?"on":""}" data-p="${o[0]}"><b>${o[1]}</b>${o[2]}</button>`).join("")}</div>
   <div class="small">Water level</div>
   <div class="opts">${DEPTH.map((d,i)=>`<button class="opt ${depth===i?"on":""}" data-d="${i}">${d}</button>`).join("")}</div>
+  <div class="small" style="margin-top:6px">📷 Add a photo as proof (optional – makes your report more trusted)</div>
+  <div class="row" style="margin:6px 0;align-items:center">${photo?`<img src="${photo.url}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:10px"><div style="flex:1" class="small">${photo.ex&&photo.ex.lat!==null?"GPS tag found in photo 📍":photo.src==="cam"?"Live photo":"No GPS tag – we’ll check your phone’s location"}<br><button class="opt" id="prm" style="padding:4px 10px;margin-top:4px">Remove</button></div>`:`<button class="opt" id="pcam" style="flex:1">📷 Take photo</button><button class="opt" id="pup" style="flex:1">🖼️ Upload</button>`}</div>
+  <input type="file" accept="image/*" capture="environment" id="fcam" hidden><input type="file" accept="image/*" id="fup" hidden>
+  <div class="small" style="margin-bottom:6px">Please avoid showing faces or license plates.</div>
   <div class="row"><button class="go" style="flex:1;padding:12px" id="send">Submit report</button><button class="opt" id="cancel" style="padding:0 14px">Cancel</button></div>`;
   $("sheet").querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{pick=b.dataset.p;sheet()});
   $("sheet").querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{depth=+b.dataset.d;sheet()});
   $("cancel").onclick = reset;
-  $("send").onclick = () => { if(!cool()) return; const p=pending; reset(); addReport({lat:p.lat,lng:p.lng,s:pick,d:depth,t:Date.now()}); };
+  if($("pcam")) $("pcam").onclick=()=>$("fcam").click(); if($("pup")) $("pup").onclick=()=>$("fup").click();
+  if($("prm")) $("prm").onclick=()=>{ photo=null; sheet(); };
+  $("fcam").onchange=e=>takePhoto(e.target.files[0],"cam"); $("fup").onchange=e=>takePhoto(e.target.files[0],"up");
+  $("send").onclick = async () => { if(!cool()||!gate()) return; $("send").disabled=true; $("send").textContent="Checking location…";
+    const p=pending, ph=photo, r=await makeReport(p.lat,p.lng,pick,depth,ph); reset(); addReport(r); };
 }
-function reset(){ if(pendMarker){ map.removeLayer(pendMarker); pendMarker=null; } pending=null; idle(); }
+function reset(){ if(pendMarker){ map.removeLayer(pendMarker); pendMarker=null; } pending=null; photo=null; idle(); }
 
 // ---- search + routing ----
 async function search(){
@@ -364,8 +573,8 @@ map.on("moveend",()=>{ clearTimeout(poiTimer); poiTimer=setTimeout(poiLoad,500);
 let nav=null, wake=null, heading=0, curSpeed=null, sim=null;
 const brg=(a,b)=>{ const k=Math.PI/180, y=Math.sin((b[1]-a[1])*k)*Math.cos(b[0]*k), x=Math.cos(a[0]*k)*Math.sin(b[0]*k)-Math.sin(a[0]*k)*Math.cos(b[0]*k)*Math.cos((b[1]-a[1])*k); return (Math.atan2(y,x)/k+360)%360; };
 // every position update (real GPS or demo drive) comes through here
-function gotPos(lat,lng,h,sp){
-  const prev=me, first=!me; me=[lat,lng];
+function gotPos(lat,lng,h,sp,acc){
+  const prev=me, first=!me; me=[lat,lng]; meFix={lat:lat,lng:lng,acc:acc||0,t:Date.now()};
   if(h!==null&&h!==undefined&&!isNaN(h)) heading=h; else if(prev&&hav(prev,me)>4) heading=brg(prev,me);
   curSpeed=(sp!==null&&sp!==undefined&&!isNaN(sp))?sp*3.6:null;
   if(!meMarker) meMarker=L.marker(me,{icon:L.divIcon({className:"",html:'<div class="me"><div class="rot"><b></b><i></i></div></div>',iconSize:[26,26],iconAnchor:[13,13]}),zIndexOffset:1000}).addTo(map); else meMarker.setLatLng(me);
@@ -491,6 +700,7 @@ if(TOMTOM_KEY){
   const apply=()=>{ if(on) trafficLayer.addTo(map); else map.removeLayer(trafficLayer); $("trf").classList.toggle("on",on); try{ localStorage.setItem("fwt",on?"1":"0"); }catch(e){} };
   $("trf").onclick=()=>{ on=!on; apply(); }; apply();
 }
+initFirebase();
 poiChips(); poiLoad();
 idle(); render(); locate(); pull(); setInterval(async()=>{ await pull(); render(); if(nav) navRecheck(); },10000);
 </script>
