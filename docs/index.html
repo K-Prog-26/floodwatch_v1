@@ -12,38 +12,46 @@
 <meta name="apple-mobile-web-app-title" content="FloodWatch">
 <title>FloodWatch Live</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<script>(function(){try{var p=localStorage.getItem("fwtheme")||"auto";var d=p==="dark"||(p==="auto"&&window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.setAttribute("data-theme",d?"dark":"light");}catch(e){}})();</script>
 <style>
+:root{--bg:#f4f7fb;--card:#fff;--ink:#16202e;--mute:#5b6a7d;--line:#dde4ee;--field:#f6f8fb;--onbg:#e8effe;--okbg:#e3f6ec;--riskbg:#fdf0d4;--blockbg:#fde3e3;--infobg:#e8effe;--attr:rgba(255,255,255,.85);--mapbg:#e8edf3;--g:#1e8449;--rd:#c0392b;--am:#b9770e;--gr:#7a8798;color-scheme:light}
+:root[data-theme="dark"]{--bg:#0e1520;--card:#17212f;--ink:#e8eef6;--mute:#9bacc1;--line:#2c3a4e;--field:#1e2a3b;--onbg:#1d3558;--okbg:#14382a;--riskbg:#44360f;--blockbg:#4a1d1f;--infobg:#1b2f52;--attr:rgba(23,33,47,.85);--mapbg:#0e1520;--g:#4cc38a;--rd:#ff7b72;--am:#f0b429;--gr:#9bacc1;color-scheme:dark}
+.leaflet-container{background:var(--mapbg)}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--card);color:var(--ink)}
+.leaflet-bar a,.leaflet-bar a:hover{background:var(--card);color:var(--ink);border-bottom-color:var(--line)}
+.leaflet-control-attribution{background:var(--attr)!important;color:var(--mute)!important}.leaflet-control-attribution a{color:#3b82f6!important}
+.darktiles .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(.9)}
 *{box-sizing:border-box}
-html,body{height:100%;margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#16202e}
+html,body{height:100%;margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg)}
 #map{position:absolute;inset:0}
-.top{position:absolute;z-index:1000;top:calc(10px + env(safe-area-inset-top,0px));left:10px;right:10px;max-width:470px;background:#fff;border-radius:16px;box-shadow:0 4px 18px rgba(0,0,0,.2);padding:10px}
+.top{position:absolute;z-index:1000;top:calc(10px + max(env(safe-area-inset-top,0px),var(--safe-area-inset-top,0px)));left:10px;right:10px;max-width:470px;background:var(--card);border-radius:16px;box-shadow:0 4px 18px rgba(0,0,0,.2);padding:10px}
 .row{display:flex;gap:8px}
-input{flex:1;min-width:0;padding:11px 12px;border:1px solid #d5dce6;border-radius:12px;font:inherit}
-button{font:inherit;cursor:pointer}
+input{flex:1;min-width:0;padding:11px 12px;border:1px solid var(--line);border-radius:12px;font:inherit;background:var(--field);color:var(--ink)}
+button{font:inherit;cursor:pointer;color:var(--ink)}
 .go{padding:0 16px;border:0;border-radius:12px;background:#2563eb;color:#fff;font-weight:600}
-.ic{width:44px;border:1px solid #d5dce6;background:#fff;border-radius:12px;font-size:1.1rem}
-.sheet{position:absolute;z-index:1000;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));max-width:470px;background:#fff;border-radius:18px;box-shadow:0 4px 18px rgba(0,0,0,.25);padding:12px}
+.ic{width:44px;border:1px solid var(--line);background:var(--card);border-radius:12px;font-size:1.1rem}
+.sheet{position:absolute;z-index:1000;left:10px;right:10px;bottom:calc(10px + max(env(safe-area-inset-bottom,0px),var(--safe-area-inset-bottom,0px)));max-width:470px;background:var(--card);border-radius:18px;box-shadow:0 4px 18px rgba(0,0,0,.25);padding:12px}
 .msg{padding:9px 11px;border-radius:12px;font-size:.88rem;margin-top:8px}
-.ok{background:#e3f6ec}.risk{background:#fdf0d4}.block{background:#fde3e3}.info{background:#e8effe}
+.ok{background:var(--okbg)}.risk{background:var(--riskbg)}.block{background:var(--blockbg)}.info{background:var(--infobg)}
 .opts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}
-.opt{padding:10px 4px;border:2px solid #dde4ee;background:#f6f8fb;border-radius:12px;font-size:.8rem}
-.opt b{display:block;font-size:1.25rem}.opt.on{border-color:#2563eb;background:#e8effe}
-.small{font-size:.78rem;color:#5b6a7d}
-.leg{display:flex;gap:10px;flex-wrap:wrap;font-size:.75rem;color:#5b6a7d;margin-top:8px}
+.opt{padding:10px 4px;border:2px solid var(--line);background:var(--field);border-radius:12px;font-size:.8rem}
+.opt b{display:block;font-size:1.25rem}.opt.on{border-color:#2563eb;background:var(--onbg)}
+.small{font-size:.78rem;color:var(--mute)}
+.leg{display:flex;gap:10px;flex-wrap:wrap;font-size:.75rem;color:var(--mute);margin-top:8px}
 .leg i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px}
 .top{overflow:auto;max-height:62vh}
-.rl{display:grid;gap:6px;margin-top:6px}.rc{display:block;width:100%;text-align:left;padding:9px 10px;border:2px solid #dde4ee;background:#f6f8fb;border-radius:12px;font-size:.82rem;line-height:1.4}.rc.on{border-color:#2563eb;background:#e8effe}
+.rl{display:grid;gap:6px;margin-top:6px}.rc{display:block;width:100%;text-align:left;padding:9px 10px;border:2px solid var(--line);background:var(--field);border-radius:12px;font-size:.82rem;line-height:1.4}.rc.on{border-color:#2563eb;background:var(--onbg)}
 .me{width:26px;height:26px}.me .rot{position:relative;width:26px;height:26px}.me i{position:absolute;left:4px;top:4px;width:18px;height:18px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 3px rgba(37,99,235,.28)}
 .me b{display:none;position:absolute;left:6px;top:-9px;border:7px solid transparent;border-bottom:13px solid #2563eb;filter:drop-shadow(0 0 2px #fff)}.navmode .me b{display:block}
-.navb{position:absolute;z-index:1000;top:calc(10px + env(safe-area-inset-top,0px));left:10px;right:10px;max-width:470px;background:#16202e;color:#fff;border-radius:16px;padding:12px;box-shadow:0 4px 18px rgba(0,0,0,.35)}
-.arow{border-top:1px solid #e5eaf2;padding:8px 0;display:grid;gap:6px;font-size:.85rem}.arow .nb{padding:6px 9px;font-size:.78rem}
-.mc{background:#fff;border-radius:18px;padding:16px;width:100%;max-width:380px;display:grid;gap:8px;max-height:90vh;overflow:auto}
+.navb{position:absolute;z-index:1000;top:calc(10px + max(env(safe-area-inset-top,0px),var(--safe-area-inset-top,0px)));left:10px;right:10px;max-width:470px;background:#16202e;color:#fff;border-radius:16px;padding:12px;box-shadow:0 4px 18px rgba(0,0,0,.35)}
+.arow{border-top:1px solid var(--line);padding:8px 0;display:grid;gap:6px;font-size:.85rem}.arow .nb{padding:6px 9px;font-size:.78rem}
+.mc{background:var(--card);border-radius:18px;padding:16px;width:100%;max-width:380px;display:grid;gap:8px;max-height:90vh;overflow:auto}
 .call{display:block;padding:13px;border-radius:12px;background:#e04545;color:#fff;text-align:center;font-weight:600;text-decoration:none}
-.nb{padding:12px;border:2px solid #dde4ee;background:#f6f8fb;border-radius:12px;font-size:.92rem}
-.pois{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.pois button{padding:5px 9px;border:1px solid #d5dce6;background:#f6f8fb;border-radius:16px;font-size:.76rem}.pois button.on{border-color:#2563eb;background:#e8effe}
-.poi span{display:flex;width:30px;height:30px;align-items:center;justify-content:center;background:#fff;border:2px solid #6b7a90;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,.3);font-size:16px}.poi span.em{border-color:#e04545}
-.pv{display:flex;gap:6px;margin-top:8px}.pv button{flex:1;padding:7px 4px;border:1px solid #d5dce6;background:#f6f8fb;border-radius:10px;font-size:.78rem}
-.chips{display:flex;gap:6px;margin-top:8px}.chips button{flex:1;padding:8px 2px;border:2px solid #dde4ee;background:#f6f8fb;border-radius:12px;font-size:.78rem}.chips button.on{border-color:#2563eb;background:#e8effe}
+.nb{padding:12px;border:2px solid var(--line);background:var(--field);border-radius:12px;font-size:.92rem}
+.pois{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.pois button{padding:5px 9px;border:1px solid var(--line);background:var(--field);border-radius:16px;font-size:.76rem}.pois button.on{border-color:#2563eb;background:var(--onbg)}
+.poi span{display:flex;width:30px;height:30px;align-items:center;justify-content:center;background:var(--card);border:2px solid var(--mute);border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,.3);font-size:16px}.poi span.em{border-color:#e04545}
+.pv{display:flex;gap:6px;margin-top:8px}.pv button{flex:1;padding:7px 4px;border:1px solid var(--line);background:var(--field);border-radius:10px;font-size:.78rem}
+.chips{display:flex;gap:6px;margin-top:8px}.chips button{flex:1;padding:8px 2px;border:2px solid var(--line);background:var(--field);border-radius:12px;font-size:.78rem}.chips button.on{border-color:#2563eb;background:var(--onbg)}
 .tl{display:flex;align-items:center;gap:6px;font-size:.82rem;margin-top:8px}.tl input{flex:none;padding:0;width:auto}
 </style>
 </head>
@@ -61,7 +69,7 @@ button{font:inherit;cursor:pointer}
   <div class="chips"><button data-v="moto">🏍️ Motorcycle</button><button data-v="car">🚗 Car</button><button data-v="puv">🚌 Jeepney / Bus</button></div>
   <label class="tl"><input type="checkbox" id="toll"> Avoid toll roads</label>
   <div class="small" style="margin-top:8px">Show on map:</div><div class="pois" id="pois" style="margin-top:4px"></div><div class="small" id="pnote"></div>
-  <div class="pois" id="trfrow" style="margin-top:6px"><button id="sat">🛰️ Satellite</button><button id="trf" style="display:none">🚦 Live traffic</button></div>
+  <div class="pois" id="trfrow" style="margin-top:6px"><button id="thm">🌗 Auto</button><button id="sat">🛰️ Satellite</button><button id="trf" style="display:none">🚦 Live traffic</button></div>
   <div id="res"></div>
   <div class="leg"><span><i style="background:#1fa463"></i>Passable</span><span><i style="background:#f0a020"></i>Risky</span><span><i style="background:#e04545"></i>Not passable</span><span>┄ Dashed = unverified</span><span id="sync"></span></div>
 </div>
@@ -88,7 +96,7 @@ button{font:inherit;cursor:pointer}
     <div id="hot" style="display:grid;gap:8px"></div>
     <div class="small">Or get directions to the nearest:</div>
     <button class="nb" data-n="hospital">🏥 Hospital</button><button class="nb" data-n="police">🚓 Police station</button><button class="nb" data-n="fire">🚒 Fire station</button>
-    <button class="nb" id="sosx" style="background:#fff">Close</button>
+    <button class="nb" id="sosx" style="background:var(--card)">Close</button>
   </div>
 </div>
 
@@ -104,6 +112,8 @@ const DB = ""; // (old setting, no longer used – Firebase below replaces it)
 // Leave apiKey empty to run in "this device only" mode.
 const FB_CONFIG = { apiKey:"AIzaSyDM_0D3_5WMLWBRiXxap7j2_6FsjHuS5Ug", authDomain:"floodwatch-v1.firebaseapp.com", databaseURL:"https://floodwatch-v1-default-rtdb.asia-southeast1.firebasedatabase.app", projectId:"floodwatch-v1", appId:"1:523645522276:web:f49354d12dd3bc0df6ea71" };
 const FB_ON = !!FB_CONFIG.apiKey && typeof firebase !== "undefined";
+// true when running inside the Android app (Capacitor), false on the website
+const IS_APP = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 // For real toll avoidance + precise flood avoidance: get a FREE key at https://openrouteservice.org (Sign up > Dashboard > Request a token)
 // and paste it here. Leave empty to use the basic free router.
 const ORS_KEY = "";
@@ -219,9 +229,9 @@ function renderAccount(msg){
   if(!FB_ON) return; const box=$("acb"), err=t=>{ $("aerr").innerHTML='<div class="msg risk">'+esc(t)+'</div>'; };
   if(!user){
     box.innerHTML='<b>Sign in to report</b><div class="small">Anyone can view the map. Reports need a verified account to stop fake news.</div>'+(msg?'<div class="msg risk">'+esc(msg)+'</div>':"")+
-      '<button class="nb" id="agoog">Continue with Google</button><input id="aem" type="email" placeholder="Email" autocomplete="email"><input id="apw" type="password" placeholder="Password (6+ characters)" autocomplete="current-password">'+
+      (IS_APP?'<div class="small">Google sign-in works on the website. In the app, use email and password.</div>':'<button class="nb" id="agoog">Continue with Google</button>')+'<input id="aem" type="email" placeholder="Email" autocomplete="email"><input id="apw" type="password" placeholder="Password (6+ characters)" autocomplete="current-password">'+
       '<div class="row"><button class="go" id="ain" style="flex:1;padding:11px">Sign in</button><button class="nb" id="aup" style="flex:1">Create account</button></div><div id="aerr"></div><button class="nb" id="acx">Close</button>';
-    $("agoog").onclick=async()=>{ try{ await fbauth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }catch(e){ err(authErr(e)); } };
+    if($("agoog")) $("agoog").onclick=async()=>{ try{ await fbauth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }catch(e){ err(authErr(e)); } };
     $("ain").onclick=async()=>{ try{ await fbauth.signInWithEmailAndPassword($("aem").value.trim(),$("apw").value); }catch(e){ err(authErr(e)); } };
     $("aup").onclick=async()=>{ try{ const c=await fbauth.createUserWithEmailAndPassword($("aem").value.trim(),$("apw").value); await c.user.sendEmailVerification(); }catch(e){ err(authErr(e)); } };
   } else {
@@ -355,12 +365,12 @@ window.showPhoto=async id=>{
 };
 $("phx").onclick=()=>{ $("phm").style.display="none"; };
 $("phm").addEventListener("click",e=>{ if(e.target===$("phm")) $("phm").style.display="none"; });
-function badge(r){ const n=flagN(r), fl=n>0?" · 🚩 "+n+(n===1?" flag":" flags"):""; return (r.av?'<span style="color:#1e8449">🛡️ Confirmed by admin</span>':badge0(r))+fl; }
+function badge(r){ const n=flagN(r), fl=n>0?" · 🚩 "+n+(n===1?" flag":" flags"):""; return (r.av?'<span style="color:var(--g)">🛡️ Confirmed by admin</span>':badge0(r))+fl; }
 function badge0(r){
   const far=(r.rd!==undefined&&r.rd>300)?" · reported from "+(r.rd>=1000?(r.rd/1000).toFixed(1)+" km":r.rd+" m")+" away":"";
-  if(r.v===2) return '<span style="color:#1e8449">📸 Photo-verified'+(r.pk==="geo"?" (GPS-tagged photo)":r.pk==="live"?" (live photo on location)":"")+'</span>';
-  if(r.v===1) return '<span style="color:#1e8449">📍 Reporter was on location</span>'+(r.ph?" · 📷 photo (location not matched)":"");
-  return '<span style="color:#7a8798">⚪ Unverified'+(r.ph?" · 📷 photo attached":"")+far+'</span>';
+  if(r.v===2) return '<span style="color:var(--g)">📸 Photo-verified'+(r.pk==="geo"?" (GPS-tagged photo)":r.pk==="live"?" (live photo on location)":"")+'</span>';
+  if(r.v===1) return '<span style="color:var(--g)">📍 Reporter was on location</span>'+(r.ph?" · 📷 photo (location not matched)":"");
+  return '<span style="color:var(--gr)">⚪ Unverified'+(r.ph?" · 📷 photo attached":"")+far+'</span>';
 }
 // drop saved photos whose reports are gone
 try{ const ids={}; reports.forEach(r=>{ if(r.id) ids[r.id]=1; });
@@ -503,7 +513,7 @@ async function routeTo(d,auto){
     const choices=uniq.sort(rank).slice(0,5);
     const fastestC=[...choices].sort(dur)[0], shortestC=[...choices].sort((x,y)=>x.rt.distance-y.rt.distance)[0];
     const tags=x=>[x===choices[0]?"⭐ Recommended":"",x===fastestC?"⚡ Fastest":"",x===shortestC?"📏 Shortest":"",x.extra?"↪️ Detour":""].filter(Boolean).join(" · ")||"Alternative";
-    const flag=x=>x.block?'<span style="color:#c0392b">⛔ Flooded road</span>':x.risk?'<span style="color:#b9770e">⚠️ Risky spot</span>':'<span style="color:#1e8449">✅ Clear</span>';
+    const flag=x=>x.block?'<span style="color:var(--rd)">⛔ Flooded road</span>':x.risk?'<span style="color:var(--am)">⚠️ Risky spot</span>':'<span style="color:var(--g)">✅ Clear</span>';
     const show=(i,fit)=>{
       routeLayer.clearLayers(); const sel=choices[i];
       choices.forEach((x,j)=>{ if(j!==i) L.geoJSON(x.rt.geometry,{style:{color:"#7a8798",weight:6,opacity:.7,dashArray:"2 9"}}).on("click",()=>show(j)).addTo(routeLayer); });
@@ -532,12 +542,13 @@ document.querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{ vehicle=b.datas
 $("toll").onchange=()=>{ avoidToll=$("toll").checked; tollBroken=false; store(); if(dest) routeTo(dest); };
 chips();
 // ---- nearby places (OpenStreetMap data via Overpass) ----
-const POI={police:{e:"🚓",s:"Police",n:"Police station",q:'["amenity"="police"]',em:1},hospital:{e:"🏥",s:"Hospital",n:"Hospital",q:'["amenity"="hospital"]',em:1},fire:{e:"🚒",s:"Fire",n:"Fire station",q:'["amenity"="fire_station"]',em:1},
+const POI={police:{e:"🚓",s:"Police",n:"Police station",q:'["amenity"="police"]',em:1},hospital:{e:"🏥",s:"Hospital",n:"Hospital",q:'["amenity"="hospital"]',em:1},
+  clinic:{e:"🩺",s:"Clinics",n:"Clinic / doctor",q:'["amenity"~"^(clinic|doctors)$"]'},fire:{e:"🚒",s:"Fire",n:"Fire station",q:'["amenity"="fire_station"]',em:1},
   school:{e:"🏫",s:"Schools",n:"School",q:'["amenity"="school"]'},store:{e:"🏪",s:"Stores",n:"Convenience store",q:'["shop"="convenience"]'},fuel:{e:"⛽",s:"Gas",n:"Gas station",q:'["amenity"="fuel"]'}};
 let poiOn={police:1,hospital:1,fire:1}; try{ const v=JSON.parse(localStorage.getItem("fwp")||"null"); if(v) poiOn=v; }catch(e){}
 const poiLayer=L.layerGroup().addTo(map), poiCache={}; let poiBox=null, poiKey="", poiTimer=null;
 const esc=t=>String(t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const kindOf=t=>t.amenity==="police"?"police":t.amenity==="hospital"?"hospital":t.amenity==="fire_station"?"fire":t.amenity==="school"?"school":t.shop==="convenience"?"store":t.amenity==="fuel"?"fuel":null;
+const kindOf=t=>t.amenity==="police"?"police":t.amenity==="hospital"?"hospital":(t.amenity==="clinic"||t.amenity==="doctors")?"clinic":t.amenity==="fire_station"?"fire":t.amenity==="school"?"school":t.shop==="convenience"?"store":t.amenity==="fuel"?"fuel":null;
 function poiChips(){
   $("pois").innerHTML=Object.keys(POI).map(k=>`<button data-k="${k}" class="${poiOn[k]?"on":""}">${POI[k].e} ${POI[k].s}</button>`).join("");
   $("pois").querySelectorAll("button").forEach(b=>b.onclick=()=>{ const k=b.dataset.k; poiOn[k]=poiOn[k]?0:1; try{localStorage.setItem("fwp",JSON.stringify(poiOn))}catch(e){} poiChips(); poiLoad(); });
@@ -600,7 +611,7 @@ map.on("dragstart",()=>{ if(nav&&!nav.done){ nav.follow=false; $("navc").style.d
 const arrow=t=>/u-turn/i.test(t)?"↩️":/arriv/i.test(t)?"🏁":/roundabout/i.test(t)?"🔄":/slight left|keep left|bear left/i.test(t)?"↖️":/slight right|keep right|bear right/i.test(t)?"↗️":/left/i.test(t)?"⬅️":/right/i.test(t)?"➡️":"⬆️";
 const fmtD=m=>m>=1000?(m/1000).toFixed(1)+" km":(Math.round(m/10)*10)+" m";
 function speak(t){ if(!nav||nav.mute||!window.speechSynthesis) return; try{ speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(t)); }catch(e){} }
-function navAlert(t,c){ $("nava").innerHTML='<div class="msg '+c+'" style="color:#16202e">'+t+'</div>'; setTimeout(()=>{ $("nava").innerHTML=""; },9000); }
+function navAlert(t,c){ $("nava").innerHTML='<div class="msg '+c+'" style="color:var(--ink)">'+t+'</div>'; setTimeout(()=>{ $("nava").innerHTML=""; },9000); }
 async function startNav(c,fromSim){
   if(!me){ say("Turn on location to start navigation.","risk"); return; }
   const S=(c.rt.steps&&c.rt.steps.length>1)?c.rt.steps:[{text:"Follow the route",dist:c.rt.distance,loc:me},{text:"You have arrived",dist:0,loc:dest}];
@@ -675,6 +686,24 @@ async function nearest(kind){
     poiOn[kind]=1; poiChips(); goPoi(best);
   }catch(e){ say("Couldn’t search right now. If it’s urgent, call 911.","risk"); }
 }
+// ---- dark mode (Auto follows your phone's setting) ----
+let themePref="auto"; try{ themePref=localStorage.getItem("fwtheme")||"auto"; }catch(e){}
+const darkMQ=window.matchMedia?window.matchMedia("(prefers-color-scheme: dark)"):null;
+const isDark=()=>themePref==="dark"||(themePref==="auto"&&!!darkMQ&&darkMQ.matches);
+function syncTiles(){
+  const dk=isDark();
+  if(TOMTOM_KEY&&baseLayer) baseLayer.setUrl("https://api.tomtom.com/map/1/tile/basic/"+(dk?"night":"main")+"/{z}/{x}/{y}.png?key="+TOMTOM_KEY);
+  $("map").classList.toggle("darktiles",dk&&!TOMTOM_KEY&&!satOn);
+}
+function applyTheme(){
+  const dk=isDark(); document.documentElement.setAttribute("data-theme",dk?"dark":"light");
+  const m=document.querySelector('meta[name="theme-color"]'); if(m) m.setAttribute("content",dk?"#0e1520":"#2563eb");
+  $("thm").textContent=themePref==="auto"?"🌗 Auto":themePref==="dark"?"🌙 Dark":"☀️ Light";
+  syncTiles();
+}
+$("thm").onclick=()=>{ themePref=themePref==="auto"?"dark":themePref==="dark"?"light":"auto"; try{ localStorage.setItem("fwtheme",themePref); }catch(e){} applyTheme(); };
+if(darkMQ&&darkMQ.addEventListener) darkMQ.addEventListener("change",applyTheme);
+
 // ---- satellite view (Esri World Imagery + place labels) ----
 let baseLayer=null; map.eachLayer(l=>{ if(l instanceof L.TileLayer) baseLayer=l; });
 if(baseLayer) baseLayer.setZIndex(1);
@@ -688,9 +717,10 @@ function applySat(){
   if(satOn) satLayer.addTo(map); else map.removeLayer(satLayer);
   $("sat").classList.toggle("on",satOn);
   try{ localStorage.setItem("fws",satOn?"1":"0"); }catch(e){}
+  syncTiles();
 }
 $("sat").onclick=()=>{ satOn=!satOn; applySat(); };
-applySat();
+applySat(); applyTheme();
 
 // ---- live traffic layer (TomTom) ----
 if(TOMTOM_KEY){
@@ -706,7 +736,7 @@ idle(); render(); locate(); pull(); setInterval(async()=>{ await pull(); render(
 </script>
 <script>
 // Makes the page installable and lets it open offline (map data still needs internet)
-if("serviceWorker" in navigator && (location.protocol==="https:"||location.hostname==="localhost")){
+if("serviceWorker" in navigator && !IS_APP && (location.protocol==="https:"||location.hostname==="localhost")){
   window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
 }
 </script>
