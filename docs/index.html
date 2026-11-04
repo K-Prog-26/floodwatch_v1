@@ -14,9 +14,11 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
 <script>(function(){try{var p=localStorage.getItem("fwtheme")||"auto";var d=p==="dark"||(p==="auto"&&window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.setAttribute("data-theme",d?"dark":"light");}catch(e){}})();</script>
 <style>
-:root{--bg:#f4f7fb;--card:#fff;--ink:#16202e;--mute:#5b6a7d;--line:#dde4ee;--field:#f6f8fb;--onbg:#e8effe;--okbg:#e3f6ec;--riskbg:#fdf0d4;--blockbg:#fde3e3;--infobg:#e8effe;--attr:rgba(255,255,255,.85);--mapbg:#e8edf3;--g:#1e8449;--rd:#c0392b;--am:#b9770e;--gr:#7a8798;color-scheme:light}
+:root{--sat:var(--safe-area-inset-top,env(safe-area-inset-top,0px));--sab:var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px));--sal:var(--safe-area-inset-left,env(safe-area-inset-left,0px));--sar:var(--safe-area-inset-right,env(safe-area-inset-right,0px));--bg:#f4f7fb;--card:#fff;--ink:#16202e;--mute:#5b6a7d;--line:#dde4ee;--field:#f6f8fb;--onbg:#e8effe;--okbg:#e3f6ec;--riskbg:#fdf0d4;--blockbg:#fde3e3;--infobg:#e8effe;--attr:rgba(255,255,255,.85);--mapbg:#e8edf3;--g:#1e8449;--rd:#c0392b;--am:#b9770e;--gr:#7a8798;color-scheme:light}
 :root[data-theme="dark"]{--bg:#0e1520;--card:#17212f;--ink:#e8eef6;--mute:#9bacc1;--line:#2c3a4e;--field:#1e2a3b;--onbg:#1d3558;--okbg:#14382a;--riskbg:#44360f;--blockbg:#4a1d1f;--infobg:#1b2f52;--attr:rgba(23,33,47,.85);--mapbg:#0e1520;--g:#4cc38a;--rd:#ff7b72;--am:#f0b429;--gr:#9bacc1;color-scheme:dark}
 .leaflet-container{background:var(--mapbg)}
+.leaflet-bottom{padding-bottom:var(--sab)}.leaflet-right{padding-right:var(--sar)}.leaflet-left{padding-left:var(--sal)}
+html,body{overscroll-behavior:none}
 .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--card);color:var(--ink)}
 .leaflet-bar a,.leaflet-bar a:hover{background:var(--card);color:var(--ink);border-bottom-color:var(--line)}
 .leaflet-control-attribution{background:var(--attr)!important;color:var(--mute)!important}.leaflet-control-attribution a{color:#3b82f6!important}
@@ -24,13 +26,13 @@
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg)}
 #map{position:absolute;inset:0}
-.top{position:absolute;z-index:1000;top:calc(10px + max(env(safe-area-inset-top,0px),var(--safe-area-inset-top,0px)));left:10px;right:10px;max-width:470px;background:var(--card);border-radius:16px;box-shadow:0 4px 18px rgba(0,0,0,.2);padding:10px}
+.top{position:absolute;z-index:1000;top:calc(10px + var(--sat));left:calc(10px + var(--sal));right:calc(10px + var(--sar));max-width:470px;background:var(--card);border-radius:16px;box-shadow:0 4px 18px rgba(0,0,0,.2);padding:10px}
 .row{display:flex;gap:8px}
 input{flex:1;min-width:0;padding:11px 12px;border:1px solid var(--line);border-radius:12px;font:inherit;background:var(--field);color:var(--ink)}
 button{font:inherit;cursor:pointer;color:var(--ink)}
 .go{padding:0 16px;border:0;border-radius:12px;background:#2563eb;color:#fff;font-weight:600}
 .ic{width:44px;border:1px solid var(--line);background:var(--card);border-radius:12px;font-size:1.1rem}
-.sheet{position:absolute;z-index:1000;left:10px;right:10px;bottom:calc(10px + max(env(safe-area-inset-bottom,0px),var(--safe-area-inset-bottom,0px)));max-width:470px;background:var(--card);border-radius:18px;box-shadow:0 4px 18px rgba(0,0,0,.25);padding:12px}
+.sheet{position:absolute;z-index:1000;left:calc(10px + var(--sal));right:calc(10px + var(--sar));bottom:calc(10px + var(--sab));max-width:470px;background:var(--card);border-radius:18px;box-shadow:0 4px 18px rgba(0,0,0,.25);padding:12px}
 .msg{padding:9px 11px;border-radius:12px;font-size:.88rem;margin-top:8px}
 .ok{background:var(--okbg)}.risk{background:var(--riskbg)}.block{background:var(--blockbg)}.info{background:var(--infobg)}
 .opts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}
@@ -43,11 +45,11 @@ button{font:inherit;cursor:pointer;color:var(--ink)}
 .rl{display:grid;gap:6px;margin-top:6px}.rc{display:block;width:100%;text-align:left;padding:9px 10px;border:2px solid var(--line);background:var(--field);border-radius:12px;font-size:.82rem;line-height:1.4}.rc.on{border-color:#2563eb;background:var(--onbg)}
 .me{width:26px;height:26px}.me .rot{position:relative;width:26px;height:26px}.me i{position:absolute;left:4px;top:4px;width:18px;height:18px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 3px rgba(37,99,235,.28)}
 .me b{display:none;position:absolute;left:6px;top:-9px;border:7px solid transparent;border-bottom:13px solid #2563eb;filter:drop-shadow(0 0 2px #fff)}.navmode .me b{display:block}
-.navb{position:absolute;z-index:1000;top:calc(10px + max(env(safe-area-inset-top,0px),var(--safe-area-inset-top,0px)));left:10px;right:10px;max-width:470px;background:#16202e;color:#fff;border-radius:16px;padding:12px;box-shadow:0 4px 18px rgba(0,0,0,.35)}
+.navb{position:absolute;z-index:1000;top:calc(10px + var(--sat));left:calc(10px + var(--sal));right:calc(10px + var(--sar));max-width:470px;background:#16202e;color:#fff;border-radius:16px;padding:12px;box-shadow:0 4px 18px rgba(0,0,0,.35)}
 .arow{border-top:1px solid var(--line);padding:8px 0;display:grid;gap:6px;font-size:.85rem}.arow .nb{padding:6px 9px;font-size:.78rem}
 #acm{position:fixed;inset:0;z-index:2000;background:var(--bg);overflow:auto}
-.sp{max-width:540px;margin:0 auto;padding:0 14px 40px}
-.sph{display:flex;align-items:center;gap:10px;padding:12px 0;padding-top:max(12px,max(env(safe-area-inset-top,0px),var(--safe-area-inset-top,0px)));position:sticky;top:0;background:var(--bg);z-index:2}
+.sp{max-width:540px;margin:0 auto;padding:0 calc(14px + var(--sar)) calc(40px + var(--sab)) calc(14px + var(--sal))}
+.sph{display:flex;align-items:center;gap:10px;padding:12px 0;padding-top:max(12px,var(--sat));position:sticky;top:0;background:var(--bg);z-index:2}
 .sc{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin:10px 0;display:grid;gap:8px}
 .stabs{display:flex;gap:6px;margin-top:4px}.stabs button{flex:1;padding:10px 4px;border:2px solid var(--line);background:var(--field);border-radius:12px;font-size:.82rem}.stabs button.on{border-color:#2563eb;background:var(--onbg)}
 .stat{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.stat div{background:var(--field);border-radius:12px;padding:10px;text-align:center;font-size:.8rem}.stat b{display:block;font-size:1.4rem}
@@ -122,7 +124,7 @@ select{padding:9px 10px;border:1px solid var(--line);border-radius:10px;backgrou
 const DB = ""; // (old setting, no longer used – Firebase below replaces it)
 // Shared reports + sign-in + admin: create a free Firebase project and paste its web-app config here (see FIREBASE-SETUP.md).
 // Leave apiKey empty to run in "this device only" mode.
-const FB_VAPID = "BCiOyz9jWDkkPFF8DoV6PUV4-siwMU-mSKU4k5IY73KDw0-KEkbsi01WWGg4koZ3YY08Aidh_WCjGKFYAq1LJiE"; // Web push key: Firebase console > Project settings > Cloud Messaging > Web Push certificates (only for alerts on the website)
+const FB_VAPID = ""; // Web push key: Firebase console > Project settings > Cloud Messaging > Web Push certificates (only for alerts on the website)
 const FB_CONFIG = { messagingSenderId:"", apiKey:"AIzaSyDM_0D3_5WMLWBRiXxap7j2_6FsjHuS5Ug", authDomain:"floodwatch-v1.firebaseapp.com", databaseURL:"https://floodwatch-v1-default-rtdb.asia-southeast1.firebasedatabase.app", projectId:"floodwatch-v1", appId:"1:523645522276:web:f49354d12dd3bc0df6ea71" };
 const FB_ON = !!FB_CONFIG.apiKey && typeof firebase !== "undefined";
 // true when running inside the Android app (Capacitor), false on the website
@@ -133,6 +135,8 @@ const ORS_KEY = "";
 // TomTom (recommended): live-traffic routing, motorcycle mode, toll + flood-zone avoidance, search and traffic map.
 // Free key at https://developer.tomtom.com (Sign up > Dashboard > Keys). Paste it here:
 const TOMTOM_KEY = "bT1Tg9UK2DxHbFQ4L89RYp9vL8tcy2Ze";
+// Optional extra map: MapTiler has a free plan. Get a key at https://www.maptiler.com (Cloud > API keys) and paste it here.
+const MAPTILER_KEY = "";
 const TT_MODE = {moto:"motorcycle", car:"car", puv:"bus"};
 let engine = "";
 const PROFILE = {moto:"driving-car", car:"driving-car", puv:"driving-car"}; // OpenRouteService has no motorcycle profile
@@ -247,8 +251,8 @@ function gate(){
 function authErr(e){ const m={"auth/invalid-credential":"Wrong email or password.","auth/wrong-password":"Wrong email or password.","auth/user-not-found":"No account with that email.","auth/email-already-in-use":"That email already has an account. Try Sign in.","auth/weak-password":"Password needs at least 6 characters.","auth/invalid-email":"That email doesn’t look right.","auth/popup-closed-by-user":"Sign-in was cancelled.","auth/unauthorized-domain":"This website address isn’t authorized in Firebase yet.","auth/too-many-requests":"Too many tries. Please wait a bit."}; return m[e&&e.code]||((e&&e.message)||"Something went wrong."); }
 // ---- settings page: account, activity, history ----
 let setTab="account", histList=[];
-function openSettings(tab,msg){ setTab=tab||"account"; $("acm").style.display="block"; $("acm").scrollTop=0; renderAccount(msg); }
-function closeSettings(){ $("acm").style.display="none"; }
+function openSettings(tab,msg){ setTab=tab||"account"; showLayer($("acm"),"block"); $("acm").scrollTop=0; renderAccount(msg); }
+function closeSettings(){ hideLayer($("acm")); }
 function openAuth(msg){ openSettings("account",msg); }
 const myLive=()=>FB_ON?(user?reports.filter(r=>r.uid===user.uid):[]):reports.slice();
 const fmtT=t=>new Date(t).toLocaleString([],{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"});
@@ -290,7 +294,8 @@ function accountTab(msg){
       '<div class="small">Your user ID:<br><code style="word-break:break-all">'+esc(user.uid)+'</code></div><button class="nb" id="acopy">Copy ID</button>'+
       (isAdmin?'<button class="go" id="aadm" style="padding:11px">🛡️ Admin panel</button>':"")+'<div id="aerr"></div><button class="nb" id="aout">Sign out</button></div>';
   } else h+='<div class="sc"><b>Saved on this device</b><div class="small">Shared reports and sign-in are switched off, so your reports stay on this phone.</div></div>';
-  h+='<div class="sc"><b>Appearance</b><div class="chips" style="margin:0">'+[["auto","🌗 Auto"],["light","☀️ Light"],["dark","🌙 Dark"]].map(t=>'<button data-th="'+t[0]+'" class="'+(themePref===t[0]?"on":"")+'">'+t[1]+'</button>').join("")+'</div></div>';
+  h+='<div class="sc"><b>Appearance</b><div class="chips" style="margin:0">'+[["auto","🌗 Auto"],["light","☀️ Light"],["dark","🌙 Dark"]].map(t=>'<button data-th="'+t[0]+'" class="'+(themePref===t[0]?"on":"")+'">'+t[1]+'</button>').join("")+'</div>'+
+    '<div class="small" style="margin-top:6px">Map style</div><div class="chips" style="margin:0">'+[["auto","✨ Auto"],TOMTOM_KEY?["tomtom","🗺️ TomTom"]:null,MAPTILER_KEY?["maptiler","🧭 MapTiler"]:null,["esri","🏙️ Esri"],["osm","🌍 OpenStreetMap"]].filter(Boolean).map(t=>'<button data-ms="'+t[0]+'" class="'+(mapStyle===t[0]?"on":"")+'">'+t[1]+'</button>').join("")+'</div></div>';
   h+='<div class="sc"><b>Reporting</b><div class="small">'+(isAdmin?"As an admin you can send reports without waiting.":"You can send a new report every "+COOLDOWN_S+" seconds.")+' When someone marks a flooded road as cleared, it leaves the map after '+CLEAR_HIDE_S+' seconds.</div></div>';
   h+='<div class="sc"><b>🔔 Flood alerts</b><div class="small">Get a notification when someone reports a flood near you, a flooded road is detected, or heavy rain starts. Works while the app is open or running in the background.</div><button class="nb" id="altog">'+(alertsOn?"🔔 Alerts are ON (tap to turn off)":"🔕 Alerts are OFF (tap to turn on)")+'</button><div class="small">Alert distance</div><select id="akm">'+[2,5,10,20].map(k=>'<option value="'+k+'"'+(alertKm===k?" selected":"")+'>'+k+' km from me</option>').join("")+'</select><button class="nb" id="atest">Send a test alert</button><div class="small" id="pst">'+pushStatusText()+'</div><div class="small">When you turn on closed-app alerts, your approximate location (about 100 m) and a device code are saved so the server knows who is nearby. Turn alerts off to delete them.</div><div id="ares"></div></div>';
   h+='<div class="sc"><b>🔧 Check map services</b><div class="small">Tests the map, live traffic, search, routing and flood detection with your TomTom key and tells you what is blocked.</div><button class="nb" id="chk">Run check</button><div id="chkres"></div></div>';
@@ -310,6 +315,7 @@ function accountTab(msg){
   };
   $("chk").onclick=checkServices;
   $("vtest").onclick=async()=>{ $("vres").innerHTML='<div class="small">Speaking…</div>'; const ok=await speakText("Voice guidance is working."); $("vres").innerHTML=ok?'<div class="msg ok">✅ If you heard the voice, you are all set.</div>':'<div class="msg risk">Voice isn’t available on this device. Check that a text-to-speech engine (such as Google Text-to-speech) is installed, then try again.</div>'; };
+  b.querySelectorAll("[data-ms]").forEach(x=>x.onclick=()=>{ mapStyle=x.dataset.ms; badStyle={}; svcMsg(""); try{ localStorage.setItem("fwmap",mapStyle); }catch(e){} syncTiles(); renderAccount(); });
   b.querySelectorAll("[data-th]").forEach(x=>x.onclick=()=>{ themePref=x.dataset.th; try{ localStorage.setItem("fwtheme",themePref); }catch(e){} applyTheme(); renderAccount(); });
   if($("agoog")) $("agoog").onclick=async()=>{ try{ await fbauth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }catch(e){ err(authErr(e)); } };
   if($("ain")) $("ain").onclick=async()=>{ try{ await fbauth.signInWithEmailAndPassword($("aem").value.trim(),$("apw").value); }catch(e){ err(authErr(e)); } };
@@ -317,7 +323,7 @@ function accountTab(msg){
   if($("averi")) $("averi").onclick=async()=>{ try{ await user.reload(); await user.getIdToken(true); user=fbauth.currentUser; renderAccount(); }catch(e){ err(authErr(e)); } };
   if($("aresend")) $("aresend").onclick=async()=>{ try{ await user.sendEmailVerification(); err("Verification email sent. Check your inbox and spam folder."); }catch(e){ err(authErr(e)); } };
   if($("acopy")) $("acopy").onclick=()=>{ try{ navigator.clipboard.writeText(user.uid); $("acopy").textContent="Copied ✓"; }catch(e){} };
-  if($("aadm")) $("aadm").onclick=()=>{ closeSettings(); $("adm").style.display="flex"; renderAdmin(); };
+  if($("aadm")) $("aadm").onclick=()=>{ $("acm").style.display="none"; $("adm").style.display="flex"; renderAdmin(); };
   if($("aout")) $("aout").onclick=()=>fbauth.signOut();
 }
 function activityTab(){
@@ -351,6 +357,14 @@ function renderSearchHist(){
   el.querySelectorAll("[data-h]").forEach(x=>x.onclick=()=>{ const h=searchHist[+x.dataset.h]; if(!h) return; closeSettings(); $("q").value=h.name; goDest([h.lat,h.lng],h.name); });
   if($("hclr")) $("hclr").onclick=()=>{ searchHist=[]; try{ localStorage.removeItem("fwhist"); }catch(e){} renderSearchHist(); };
 }
+// Android gesture navigation: swiping back closes the open page/pop-up first instead of leaving the app
+let layerDepth=0, ignorePop=0;
+function pushLayer(){ try{ history.pushState({fw:1},""); layerDepth++; }catch(e){} }
+function popLayer(){ if(layerDepth>0){ layerDepth--; ignorePop++; try{ history.back(); }catch(e){ ignorePop--; } } }
+function showLayer(el,disp){ const wasHidden=!el.style.display||el.style.display==="none"; el.style.display=disp; if(wasHidden) pushLayer(); }
+function hideLayer(el){ if(el.style.display&&el.style.display!=="none"){ el.style.display="none"; popLayer(); } }
+function closeTopLayer(){ for(const id of ["phm","adm","acm","sosm"]){ const el=$(id); if(el&&el.style.display&&el.style.display!=="none"){ el.style.display="none"; return true; } } return false; }
+window.addEventListener("popstate",()=>{ if(ignorePop>0){ ignorePop--; return; } if(layerDepth>0){ layerDepth--; closeTopLayer(); } });
 $("acc").onclick=()=>openSettings("account");
 $("acx").onclick=closeSettings;
 function renderAdmin(){
@@ -363,7 +377,7 @@ function renderAdmin(){
 async function adminAct(a,id){
   const r=reports.find(x=>x.id===id); if(!r||!isAdmin) return;
   try{
-    if(a==="go"){ $("adm").style.display="none"; map.setView([r.lat,r.lng],17); }
+    if(a==="go"){ hideLayer($("adm")); map.setView([r.lat,r.lng],17); }
     else if(a==="ph") showPhoto(id);
     else if(a==="ok") await fbdb.ref("reports/"+id+"/av").set(1);
     else if(a==="fl") await fbdb.ref("flags/"+id).remove();
@@ -383,7 +397,7 @@ window.flagReport=async id=>{
 function initFirebase(){
   if(!FB_ON) return;
   firebase.initializeApp(FB_CONFIG); fbauth=firebase.auth(); fbdb=firebase.database();
-  $("adx").onclick=()=>{ $("adm").style.display="none"; };
+  $("adx").onclick=()=>{ hideLayer($("adm")); };
   fbauth.onAuthStateChanged(async u=>{
     user=u; isAdmin=false; banned=false; renderAccount(); if(!u) dropSub();
     if(u){ try{ isAdmin=(await fbdb.ref("admins/"+u.uid).get()).val()===true; }catch(e){} try{ banned=(await fbdb.ref("banned/"+u.uid).get()).exists(); }catch(e){} renderAccount(); if(alertsOn&&u.emailVerified) enablePush(); }
@@ -462,12 +476,12 @@ async function loadPhoto(id){
   return null;
 }
 window.showPhoto=async id=>{
-  $("phi").removeAttribute("src"); $("phn").textContent="Loading…"; $("phm").style.display="flex";
+  $("phi").removeAttribute("src"); $("phn").textContent="Loading…"; showLayer($("phm"),"flex");
   const u=await loadPhoto(id);
   if(u&&u.indexOf("data:image/jpeg;base64,")===0){ $("phi").src=u; $("phn").textContent=""; } else $("phn").textContent="Photo isn’t available right now.";
 };
-$("phx").onclick=()=>{ $("phm").style.display="none"; };
-$("phm").addEventListener("click",e=>{ if(e.target===$("phm")) $("phm").style.display="none"; });
+$("phx").onclick=()=>{ hideLayer($("phm")); };
+$("phm").addEventListener("click",e=>{ if(e.target===$("phm")) hideLayer($("phm")); });
 function badge(r){ const n=flagN(r), fl=n>0?" · 🚩 "+n+(n===1?" flag":" flags"):""; return (r.av?'<span style="color:var(--g)">🛡️ Confirmed by admin</span>':badge0(r))+fl; }
 function badge0(r){
   if(r.auto) return '<span style="color:var(--gr)">📡 Auto-detected from traffic data (not yet confirmed by a person)</span>';
@@ -674,6 +688,42 @@ document.querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{ vehicle=b.datas
 $("toll").onchange=()=>{ avoidToll=$("toll").checked; tollBroken=false; store(); if(dest) routeTo(dest); };
 chips();
 // ---- nearby places (OpenStreetMap data via Overpass) ----
+const TTPOI={police:{set:"7322"},hospital:{set:"7321"},clinic:{q:"clinic"},fire:{set:"7392",q:"fire station"},school:{set:"7372"},store:{set:"9361009",q:"convenience store"},fuel:{set:"7311"}};
+const OVERPASS=["https://overpass-api.de/api/interpreter","https://overpass.kumi.systems/api/interpreter","https://overpass.private.coffee/api/interpreter","https://maps.mail.ru/osm/tools/overpass/api/interpreter"];
+let ttPoiBad=false, poiSource="";
+async function ttPlaces(kind,lat,lng,rad){
+  const c=TTPOI[kind], base="https://api.tomtom.com/search/2/", common="&lat="+lat.toFixed(5)+"&lon="+lng.toFixed(5)+"&radius="+Math.round(rad)+"&limit=100&countrySet=PH&language=en-GB";
+  const run=async url=>{ const r=await fetch(url); if(!r.ok) throw new Error("tomtom "+r.status); return (await r.json()).results||[]; };
+  let res=[];
+  if(c.set) res=await run(base+"nearbySearch/.json?key="+TOMTOM_KEY+common+"&categorySet="+c.set);
+  if(!res.length&&c.q) res=await run(base+"poiSearch/"+encodeURIComponent(c.q)+".json?key="+TOMTOM_KEY+common);
+  return res.filter(x=>x.position).map(x=>({lat:x.position.lat,lng:x.position.lon,name:(x.poi&&x.poi.name)||POI[kind].n,k:"t"+String(x.id||(x.position.lat+","+x.position.lon)).replace(/[^A-Za-z0-9]/g,"")}));
+}
+async function overpass(q){
+  let last=null;
+  for(const u of OVERPASS){
+    try{
+      const ac=new AbortController(), t=setTimeout(()=>ac.abort(),12000);
+      const r=await fetch(u,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"data="+encodeURIComponent(q),signal:ac.signal}); clearTimeout(t);
+      if(!r.ok) throw new Error("http "+r.status);
+      const j=await r.json(); if(j&&j.elements) return j.elements;
+    }catch(e){ last=e; }
+  }
+  throw last||new Error("overpass");
+}
+// box = {lat,lng,rad (metres), s,w,n,e}. Tries TomTom first, then free OpenStreetMap servers.
+async function fetchPlaces(kinds,box){
+  if(TOMTOM_KEY&&!ttPoiBad){
+    const rs=await Promise.all(kinds.map(k=>ttPlaces(k,box.lat,box.lng,box.rad).then(a=>({k:k,a:a}),()=>null)));
+    if(rs.every(x=>x===null)) ttPoiBad=true;
+    else { const out=[]; rs.forEach(x=>{ if(x) x.a.forEach(p=>out.push(Object.assign({kind:x.k},p))); }); poiSource="TomTom"; return out; }
+  }
+  const q="[out:json][timeout:20];("+kinds.map(k=>"nwr"+POI[k].q+"("+box.s+","+box.w+","+box.n+","+box.e+");").join("")+");out center 300;";
+  const els=await overpass(q), out=[];
+  els.forEach(el=>{ const t=el.tags||{}, kind=kindOf(t), lat=el.lat!==undefined?el.lat:(el.center&&el.center.lat), lng=el.lon!==undefined?el.lon:(el.center&&el.center.lon);
+    if(kind&&lat!=null&&lng!=null) out.push({kind:kind,lat:lat,lng:lng,name:t.name||POI[kind].n,k:el.type[0]+el.id}); });
+  poiSource="OpenStreetMap"; return out;
+}
 const POI={police:{e:"🚓",s:"Police",n:"Police station",q:'["amenity"="police"]',em:1},hospital:{e:"🏥",s:"Hospital",n:"Hospital",q:'["amenity"="hospital"]',em:1},
   clinic:{e:"🩺",s:"Clinics",n:"Clinic / doctor",q:'["amenity"~"^(clinic|doctors)$"]'},fire:{e:"🚒",s:"Fire",n:"Fire station",q:'["amenity"="fire_station"]',em:1},
   school:{e:"🏫",s:"Schools",n:"School",q:'["amenity"="school"]'},store:{e:"🏪",s:"Stores",n:"Convenience store",q:'["shop"="convenience"]'},fuel:{e:"⛽",s:"Gas",n:"Gas station",q:'["amenity"="fuel"]'}};
@@ -700,15 +750,13 @@ async function poiLoad(){
   note.textContent="";
   const key=keys.join(), view=map.getBounds();
   if(poiBox&&poiKey===key&&poiBox.contains(view)){ poiDraw(); return; }
-  const b=view.pad(.3);
-  const q=`[out:json][timeout:20];(${keys.map(k=>`nwr${POI[k].q}(${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()});`).join("")});out center 300;`;
+  const b=view.pad(.3), c=b.getCenter(), rad=Math.min(15000,Math.max(1500,hav([c.lat,c.lng],[b.getNorth(),b.getEast()])));
   try{
     note.textContent="Loading places…";
-    const j=await (await fetch("https://overpass-api.de/api/interpreter",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"data="+encodeURIComponent(q)})).json();
-    j.elements.forEach(el=>{ const t=el.tags||{}, kind=kindOf(t), lat=el.lat!==undefined?el.lat:(el.center&&el.center.lat), lng=el.lon!==undefined?el.lon:(el.center&&el.center.lon);
-      if(!kind||lat==null||lng==null) return; const k=el.type[0]+el.id; poiCache[k]={k,kind,lat,lng,name:t.name||POI[kind].n}; });
+    const places=await fetchPlaces(keys,{lat:c.lat,lng:c.lng,rad:rad,s:b.getSouth(),w:b.getWest(),n:b.getNorth(),e:b.getEast()});
+    places.forEach(p=>{ poiCache[p.k]={k:p.k,kind:p.kind,lat:p.lat,lng:p.lng,name:p.name}; });
     poiBox=b; poiKey=key; note.textContent=""; poiDraw();
-  }catch(e){ note.textContent="Couldn’t load places right now."; }
+  }catch(e){ note.textContent="Couldn’t load places right now (the free places service is busy or blocked). Tap a place type to try again."; }
 }
 window.goPoi=k=>{ const p=poiCache[k]; if(!p) return; dest=[p.lat,p.lng]; if(destMarker) map.removeLayer(destMarker); destMarker=L.marker(dest).addTo(map); $("q").value=p.name; map.closePopup(); routeTo(dest); };
 map.on("moveend",()=>{ clearTimeout(poiTimer); poiTimer=setTimeout(poiLoad,500); });
@@ -967,6 +1015,7 @@ async function checkServices(){
     ["Live traffic tiles","https://api.tomtom.com/traffic/map/4/tile/flow/relative/10/856/470.png?key="+K],
     ["Place search","https://api.tomtom.com/search/2/search/manila.json?key="+K+"&limit=1"],
     ["Routing","https://api.tomtom.com/routing/1/calculateRoute/14.50,121.00:14.55,121.00/json?key="+K],
+    ["Nearby places (TomTom)","https://api.tomtom.com/search/2/nearbySearch/.json?key="+K+"&lat=14.5&lon=121&radius=3000&limit=1&categorySet=7321"],
     ["Flood detection (traffic incidents)",inc],
     ["Rain forecast (Open-Meteo)","https://api.open-meteo.com/v1/forecast?latitude=14.5&longitude=121&current=precipitation"]];
   const why=c=>c===0?"couldn’t connect. You may be offline, or the key doesn’t allow this website.":(c===401||c===403)?"the key isn’t allowed for this service or website. Check ‘Allowed domains’ and the enabled products for the key in your TomTom dashboard.":c===429?"free limit reached for now.":c===404?"service not found.":"error "+c+".";
@@ -982,20 +1031,18 @@ async function checkServices(){
 const HOTLINES=[["National Emergency Hotline","911"],["Philippine Red Cross","143"]];
 $("hot").innerHTML=HOTLINES.map(h=>`<a class="call" href="tel:${esc(h[1])}">📞 Call ${esc(h[1])} · ${esc(h[0])}</a>`).join("");
 const sosm=$("sosm");
-$("sos").onclick=()=>{ sosm.style.display="flex"; };
-$("sosx").onclick=()=>{ sosm.style.display="none"; };
-sosm.addEventListener("click",e=>{ if(e.target===sosm) sosm.style.display="none"; });
+$("sos").onclick=()=>{ showLayer(sosm,"flex"); };
+$("sosx").onclick=()=>{ hideLayer(sosm); };
+sosm.addEventListener("click",e=>{ if(e.target===sosm) hideLayer(sosm); });
 document.querySelectorAll("[data-n]").forEach(b=>b.onclick=()=>nearest(b.dataset.n));
 async function nearest(kind){
   const c=map.getCenter(), o=me||[c.lat,c.lng];
-  sosm.style.display="none"; say(`Finding the nearest ${POI[kind].n.toLowerCase()}…`,"info");
+  hideLayer(sosm); say(`Finding the nearest ${POI[kind].n.toLowerCase()}…`,"info");
   try{
-    const q=`[out:json][timeout:20];nwr${POI[kind].q}(around:10000,${o[0]},${o[1]});out center 40;`;
-    const j=await (await fetch("https://overpass-api.de/api/interpreter",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"data="+encodeURIComponent(q)})).json();
+    const dLat=0.09, dLng=0.09/Math.max(0.2,Math.cos(o[0]*Math.PI/180));
+    const places=await fetchPlaces([kind],{lat:o[0],lng:o[1],rad:10000,s:o[0]-dLat,n:o[0]+dLat,w:o[1]-dLng,e:o[1]+dLng});
     let best=null, bd=Infinity;
-    j.elements.forEach(el=>{ const t=el.tags||{}, lat=el.lat!==undefined?el.lat:(el.center&&el.center.lat), lng=el.lon!==undefined?el.lon:(el.center&&el.center.lon);
-      if(lat==null||lng==null) return; const k=el.type[0]+el.id; poiCache[k]={k,kind,lat,lng,name:t.name||POI[kind].n};
-      const d=hav(o,[lat,lng]); if(d<bd){ bd=d; best=k; } });
+    places.forEach(p=>{ poiCache[p.k]={k:p.k,kind:kind,lat:p.lat,lng:p.lng,name:p.name}; const d=hav(o,[p.lat,p.lng]); if(d<bd){ bd=d; best=p.k; } });
     if(!best){ say(`No ${POI[kind].n.toLowerCase()} found within 10 km in the map data. If it’s urgent, call 911.`,"risk"); return; }
     poiOn[kind]=1; poiChips(); goPoi(best);
   }catch(e){ say("Couldn’t search right now. If it’s urgent, call 911.","risk"); }
@@ -1004,20 +1051,28 @@ async function nearest(kind){
 let themePref="auto"; try{ themePref=localStorage.getItem("fwtheme")||"auto"; }catch(e){}
 const darkMQ=window.matchMedia?window.matchMedia("(prefers-color-scheme: dark)"):null;
 const isDark=()=>themePref==="dark"||(themePref==="auto"&&!!darkMQ&&darkMQ.matches);
-let ttFellBack=false, ttErr=0, ttOk=0;
+let mapStyle="auto"; try{ mapStyle=localStorage.getItem("fwmap")||"auto"; }catch(e){}
+let tileOk=0, tileErr=0, badStyle={}, curTileUrl="", curAttr="";
+const STYLES={
+  tomtom:dk=>({url:"https://api.tomtom.com/map/1/tile/basic/"+(dk?"night":"main")+"/{z}/{x}/{y}.png?key="+TOMTOM_KEY,attr:"© TomTom, © OpenStreetMap contributors",nz:22,filter:false}),
+  maptiler:dk=>({url:"https://api.maptiler.com/maps/"+(dk?"streets-v2-dark":"streets-v2")+"/256/{z}/{x}/{y}.png?key="+MAPTILER_KEY,attr:"© MapTiler © OpenStreetMap contributors",nz:22,filter:false}),
+  esri:dk=>({url:"https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",attr:"Tiles © Esri",nz:19,filter:dk}),
+  osm:dk=>({url:"https://tile.openstreetmap.org/{z}/{x}/{y}.png",attr:"© OpenStreetMap contributors",nz:19,filter:dk})
+};
+const styleOK=k=>!badStyle[k]&&(k==="esri"||k==="osm"||(k==="tomtom"&&!!TOMTOM_KEY)||(k==="maptiler"&&!!MAPTILER_KEY));
+function effectiveStyle(){ return (mapStyle==="auto"?["tomtom","maptiler","esri"]:[mapStyle,"tomtom","maptiler","esri"]).find(styleOK)||"esri"; }
 function svcMsg(t){ const e=$("svc"); if(e) e.innerHTML=t?'<div class="msg risk">'+t+'</div>':""; }
-// If the TomTom map tiles can't be loaded (for example the key isn't allowed on this website), switch to a backup map
-function mapFallback(){
-  ttFellBack=true;
-  if(baseLayer){ baseLayer.options.maxNativeZoom=19; baseLayer.setUrl("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"); }
-  try{ map.attributionControl.addAttribution("Tiles © Esri"); }catch(e){}
-  svcMsg("⚠️ TomTom map tiles aren’t loading, so a backup map is shown. Open ⚙️ Settings → Account → 🔧 Check map services to see why.");
-  syncTiles();
-}
 function syncTiles(){
-  const dk=isDark(), tt=!!TOMTOM_KEY&&!ttFellBack;
-  if(tt&&baseLayer) baseLayer.setUrl("https://api.tomtom.com/map/1/tile/basic/"+(dk?"night":"main")+"/{z}/{x}/{y}.png?key="+TOMTOM_KEY);
-  $("map").classList.toggle("darktiles",dk&&!tt&&!satOn);
+  const dk=isDark(), cfg=STYLES[effectiveStyle()](dk);
+  if(baseLayer&&cfg.url!==curTileUrl){
+    tileOk=0; tileErr=0;
+    const onMap=map.hasLayer(baseLayer);
+    try{ if(onMap&&curAttr) map.attributionControl.removeAttribution(curAttr); }catch(e){}
+    baseLayer.options.maxNativeZoom=cfg.nz; baseLayer.options.attribution=cfg.attr;
+    try{ if(onMap) map.attributionControl.addAttribution(cfg.attr); }catch(e){}
+    baseLayer.setUrl(cfg.url); curTileUrl=cfg.url; curAttr=cfg.attr;
+  }
+  $("map").classList.toggle("darktiles",!!cfg.filter&&!satOn);
 }
 function applyTheme(){
   const dk=isDark(); document.documentElement.setAttribute("data-theme",dk?"dark":"light");
@@ -1031,9 +1086,17 @@ if(darkMQ&&darkMQ.addEventListener) darkMQ.addEventListener("change",applyTheme)
 // ---- satellite view (Esri World Imagery + place labels) ----
 let baseLayer=null; map.eachLayer(l=>{ if(l instanceof L.TileLayer) baseLayer=l; });
 if(baseLayer) baseLayer.setZIndex(1);
-if(baseLayer&&TOMTOM_KEY){
-  baseLayer.on("tileload",()=>{ ttOk++; });
-  baseLayer.on("tileerror",()=>{ if(!ttFellBack&&ttOk===0&&++ttErr>=3) mapFallback(); });
+if(baseLayer){
+  curAttr=(baseLayer.options&&baseLayer.options.attribution)||"";
+  baseLayer.on("tileload",()=>{ tileOk++; });
+  baseLayer.on("tileerror",()=>{
+    const st=effectiveStyle();
+    if((st==="tomtom"||st==="maptiler")&&tileOk===0&&++tileErr>=3){
+      badStyle[st]=true;
+      svcMsg("⚠️ "+(st==="tomtom"?"TomTom":"MapTiler")+" map tiles aren’t loading, so a backup map is shown. Open ⚙️ Settings → Account → 🔧 Check map services to see why.");
+      syncTiles();
+    }
+  });
 }
 const satLayer=L.layerGroup([
   L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxNativeZoom:18,maxZoom:22,zIndex:1,attribution:"Imagery © Esri, Maxar, Earthstar Geographics"}),
