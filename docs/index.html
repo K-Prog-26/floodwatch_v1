@@ -53,6 +53,7 @@ button{font:inherit;cursor:pointer;color:var(--ink)}
 .stat{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.stat div{background:var(--field);border-radius:12px;padding:10px;text-align:center;font-size:.8rem}.stat b{display:block;font-size:1.4rem}
 #sug{display:none;margin-top:6px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .sg{display:block;width:100%;text-align:left;padding:9px 11px;border:0;border-bottom:1px solid var(--line);background:var(--card);font-size:.85rem;line-height:1.35}.sg:last-child{border-bottom:0}
+select{padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--field);color:var(--ink);font:inherit}
 .mc{background:var(--card);border-radius:18px;padding:16px;width:100%;max-width:380px;display:grid;gap:8px;max-height:90vh;overflow:auto}
 .call{display:block;padding:13px;border-radius:12px;background:#e04545;color:#fff;text-align:center;font-weight:600;text-decoration:none}
 .nb{padding:12px;border:2px solid var(--line);background:var(--field);border-radius:12px;font-size:.92rem}
@@ -78,9 +79,10 @@ button{font:inherit;cursor:pointer;color:var(--ink)}
   <div class="chips"><button data-v="moto">🏍️ Motorcycle</button><button data-v="car">🚗 Car</button><button data-v="puv">🚌 Jeepney / Bus</button></div>
   <label class="tl"><input type="checkbox" id="toll"> Avoid toll roads</label>
   <div class="small" style="margin-top:8px">Show on map:</div><div class="pois" id="pois" style="margin-top:4px"></div><div class="small" id="pnote"></div>
-  <div class="pois" id="trfrow" style="margin-top:6px"><button id="thm">🌗 Auto</button><button id="sat">🛰️ Satellite</button><button id="trf" style="display:none">🚦 Live traffic</button></div>
+  <div class="pois" id="trfrow" style="margin-top:6px"><button id="thm">🌗 Auto</button><button id="aut" style="display:none">📡 Auto-detect</button><button id="sat">🛰️ Satellite</button><button id="trf" style="display:none">🚦 Live traffic</button></div>
   <div id="res"></div>
   <div class="leg"><span><i style="background:#1fa463"></i>Passable</span><span><i style="background:#f0a020"></i>Risky</span><span><i style="background:#e04545"></i>Not passable</span><span>┄ Dashed = unverified</span><span id="sync"></span></div>
+  <div id="wxb"></div>
 </div>
 <div class="navb" id="nav" style="display:none">
   <div class="row" style="align-items:center"><div id="navi" style="font-size:2.4rem;line-height:1">⬆️</div>
@@ -113,13 +115,15 @@ button{font:inherit;cursor:pointer;color:var(--ink)}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script>
 // ---- SETTINGS ----
 // For LIVE sharing between users: paste your Firebase Realtime Database URL, e.g. "https://my-app-default-rtdb.firebaseio.com"
 const DB = ""; // (old setting, no longer used – Firebase below replaces it)
 // Shared reports + sign-in + admin: create a free Firebase project and paste its web-app config here (see FIREBASE-SETUP.md).
 // Leave apiKey empty to run in "this device only" mode.
-const FB_CONFIG = { apiKey:"AIzaSyDM_0D3_5WMLWBRiXxap7j2_6FsjHuS5Ug", authDomain:"floodwatch-v1.firebaseapp.com", databaseURL:"https://floodwatch-v1-default-rtdb.asia-southeast1.firebasedatabase.app", projectId:"floodwatch-v1", appId:"1:523645522276:web:f49354d12dd3bc0df6ea71" };
+const FB_VAPID = "BCiOyz9jWDkkPFF8DoV6PUV4-siwMU-mSKU4k5IY73KDw0-KEkbsi01WWGg4koZ3YY08Aidh_WCjGKFYAq1LJiE"; // Web push key: Firebase console > Project settings > Cloud Messaging > Web Push certificates (only for alerts on the website)
+const FB_CONFIG = { messagingSenderId:"", apiKey:"AIzaSyDM_0D3_5WMLWBRiXxap7j2_6FsjHuS5Ug", authDomain:"floodwatch-v1.firebaseapp.com", databaseURL:"https://floodwatch-v1-default-rtdb.asia-southeast1.firebasedatabase.app", projectId:"floodwatch-v1", appId:"1:523645522276:web:f49354d12dd3bc0df6ea71" };
 const FB_ON = !!FB_CONFIG.apiKey && typeof firebase !== "undefined";
 // true when running inside the Android app (Capacitor), false on the website
 const IS_APP = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
@@ -157,7 +161,7 @@ const eff=(r,v)=>{const a=SH[v][r.s],b=DR[v][r.d];return RANK[a]>=RANK[b]?a:b};
 let vehicle="car", avoidToll=false, tollBroken=false;
 try{const v=JSON.parse(localStorage.getItem("fwv")||"{}"); if(VEH[v.vehicle]) vehicle=v.vehicle; avoidToll=!!v.avoidToll;}catch(e){}
 const st=r=>eff(r,vehicle);
-let user=null, isAdmin=false, banned=false, flags={}, fbdb=null, fbauth=null;
+let user=null, isAdmin=false, banned=false, flags={}, fbdb=null, fbauth=null, autoReports=[];
 let me=null, meMarker=null, dest=null, destMarker=null, reports=[], pick="ok", depth=0, pending=null, pendMarker=null, lastSent=0;
 const layer = L.layerGroup().addTo(map), routeLayer = L.layerGroup().addTo(map);
 $("sync").textContent = (FB_ON ? "🟢 Live sync on" : "⚪ Reports saved on this device only") + (TOMTOM_KEY ? " · 🚦 TomTom routing + traffic on" : ORS_KEY ? " · 🧭 Smart routing on" : "");
@@ -171,7 +175,7 @@ async function pull(){
   try{ const o = await (await fetch(DB+"/reports.json")).json(); reports = Object.values(o||{}).filter(valid); saveLocal(); render(); }catch(e){}
 }
 async function push(r){ if(DB) try{ await fetch(DB+"/reports.json",{method:"POST",body:JSON.stringify(r)}); }catch(e){} }
-const live = () => reports.filter(r => Date.now()-r.t < EXPIRE_HOURS*3600e3);
+const live = () => reports.concat(autoReports).filter(r => Date.now()-r.t < EXPIRE_HOURS*3600e3);
 // newest report within ~NEAR_M of each other wins (so "cleared" overrides older "blocked")
 const flagN=r=>{ const f=r.id&&flags[r.id]; return f?Object.keys(f).length:0; };
 const trust=r=>r.av?3:(r.v||0);
@@ -197,9 +201,12 @@ const ago = t => { const m=Math.round((Date.now()-t)/60000); return m<1?"just no
 function render(){
   layer.clearLayers();
   current().filter(r=>!(r.cleared&&Date.now()-r.t>CLEAR_HIDE_S*1000)).forEach(r => {
-    L.circle([r.lat,r.lng],{radius:NEAR_M*0.7,color:COL[st(r)],fillColor:COL[st(r)],fillOpacity:.35,weight:(r.v===2?4:2),dashArray:(r.v>=1?null:"5 5")})
-      .bindPopup(`<b>${LBL[st(r)]}</b> for ${VEH[vehicle]}<br>${DEPTH[r.d]} · ${ago(r.t)}<br>${badge(r)}${r.ph&&r.id?`<div class="pv"><button onclick="showPhoto('${r.id}')">📷 View photo</button></div>`:""}
-        <div class="pv"><button onclick="vote(${r.t},'${r.s}')">👍 Still true</button><button onclick="vote(${r.t},'ok')">✅ It’s cleared</button>${r.id?`<button onclick="flagReport('${r.id}')">🚩 Flag</button>`:""}</div>`).addTo(layer);
+    const tools=r.auto
+      ? `<div class="small">${esc(r.desc||"Flooding reported by traffic data")}${r.from?" · "+esc(r.from):""}</div>`
+      : `<div class="pv"><button onclick="vote(${r.t},'${r.s}')">👍 Still true</button><button onclick="vote(${r.t},'ok')">✅ It’s cleared</button>${r.id?`<button onclick="flagReport('${r.id}')">🚩 Flag</button>`:""}</div>`;
+    const pop=`<b>${LBL[st(r)]}</b> for ${VEH[vehicle]}<br>${r.auto?"Depth unknown":DEPTH[r.d]} · ${ago(r.t)}<br>${badge(r)}${r.ph&&r.id?`<div class="pv"><button onclick="showPhoto('${r.id}')">📷 View photo</button></div>`:""}${tools}`;
+    L.circle([r.lat,r.lng],{radius:NEAR_M*0.7,color:COL[st(r)],fillColor:COL[st(r)],fillOpacity:.35,weight:(r.v===2?4:2),dashArray:(r.auto?"2 7":(r.v>=1?null:"5 5"))}).bindPopup(pop).addTo(layer);
+    if(r.auto) L.marker([r.lat,r.lng],{icon:L.divIcon({className:"poi",html:"<span>📡</span>",iconSize:[30,30],iconAnchor:[15,15]}),zIndexOffset:400}).bindPopup(pop).addTo(layer);
   });
 }
 window.vote = async (id,s) => {
@@ -285,8 +292,21 @@ function accountTab(msg){
   } else h+='<div class="sc"><b>Saved on this device</b><div class="small">Shared reports and sign-in are switched off, so your reports stay on this phone.</div></div>';
   h+='<div class="sc"><b>Appearance</b><div class="chips" style="margin:0">'+[["auto","🌗 Auto"],["light","☀️ Light"],["dark","🌙 Dark"]].map(t=>'<button data-th="'+t[0]+'" class="'+(themePref===t[0]?"on":"")+'">'+t[1]+'</button>').join("")+'</div></div>';
   h+='<div class="sc"><b>Reporting</b><div class="small">'+(isAdmin?"As an admin you can send reports without waiting.":"You can send a new report every "+COOLDOWN_S+" seconds.")+' When someone marks a flooded road as cleared, it leaves the map after '+CLEAR_HIDE_S+' seconds.</div></div>';
+  h+='<div class="sc"><b>🔔 Flood alerts</b><div class="small">Get a notification when someone reports a flood near you, a flooded road is detected, or heavy rain starts. Works while the app is open or running in the background.</div><button class="nb" id="altog">'+(alertsOn?"🔔 Alerts are ON (tap to turn off)":"🔕 Alerts are OFF (tap to turn on)")+'</button><div class="small">Alert distance</div><select id="akm">'+[2,5,10,20].map(k=>'<option value="'+k+'"'+(alertKm===k?" selected":"")+'>'+k+' km from me</option>').join("")+'</select><button class="nb" id="atest">Send a test alert</button><div class="small" id="pst">'+pushStatusText()+'</div><div class="small">When you turn on closed-app alerts, your approximate location (about 100 m) and a device code are saved so the server knows who is nearby. Turn alerts off to delete them.</div><div id="ares"></div></div>';
   h+='<div class="sc"><b>Navigation voice</b><div class="small">Spoken turn-by-turn directions. Make sure your media volume is up.</div><button class="nb" id="vtest">🔊 Test voice</button><div id="vres"></div></div>';
   b.innerHTML=h;
+  $("altog").onclick=async()=>{
+    if(alertsOn){ alertsOn=false; saveAlerts(); dropSub(); renderAccount(); return; }
+    const ok=await enableAlerts();
+    if(ok){ alertsOn=true; saveAlerts(); await enablePush(); renderAccount(); }
+    else $("ares").innerHTML='<div class="msg risk">Notifications are blocked. Allow them for this app in your phone or browser settings, then try again.</div>';
+  };
+  $("akm").onchange=()=>{ alertKm=+$("akm").value; saveAlerts(); syncSub(true); };
+  $("atest").onclick=async()=>{
+    if(!alertsOn){ $("ares").innerHTML='<div class="msg risk">Turn alerts on first.</div>'; return; }
+    const ok=await notify("🌊 FloodWatch test","Alerts are working.","test"+Date.now(),true);
+    $("ares").innerHTML=ok?'<div class="msg ok">✅ Test alert sent. Check your notifications.</div>':'<div class="msg risk">Couldn’t show a notification. Check that notifications are allowed for this app.</div>';
+  };
   $("vtest").onclick=async()=>{ $("vres").innerHTML='<div class="small">Speaking…</div>'; const ok=await speakText("Voice guidance is working."); $("vres").innerHTML=ok?'<div class="msg ok">✅ If you heard the voice, you are all set.</div>':'<div class="msg risk">Voice isn’t available on this device. Check that a text-to-speech engine (such as Google Text-to-speech) is installed, then try again.</div>'; };
   b.querySelectorAll("[data-th]").forEach(x=>x.onclick=()=>{ themePref=x.dataset.th; try{ localStorage.setItem("fwtheme",themePref); }catch(e){} applyTheme(); renderAccount(); });
   if($("agoog")) $("agoog").onclick=async()=>{ try{ await fbauth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }catch(e){ err(authErr(e)); } };
@@ -363,12 +383,12 @@ function initFirebase(){
   firebase.initializeApp(FB_CONFIG); fbauth=firebase.auth(); fbdb=firebase.database();
   $("adx").onclick=()=>{ $("adm").style.display="none"; };
   fbauth.onAuthStateChanged(async u=>{
-    user=u; isAdmin=false; banned=false; renderAccount();
-    if(u){ try{ isAdmin=(await fbdb.ref("admins/"+u.uid).get()).val()===true; }catch(e){} try{ banned=(await fbdb.ref("banned/"+u.uid).get()).exists(); }catch(e){} renderAccount(); }
+    user=u; isAdmin=false; banned=false; renderAccount(); if(!u) dropSub();
+    if(u){ try{ isAdmin=(await fbdb.ref("admins/"+u.uid).get()).val()===true; }catch(e){} try{ banned=(await fbdb.ref("banned/"+u.uid).get()).exists(); }catch(e){} renderAccount(); if(alertsOn&&u.emailVerified) enablePush(); }
   });
   fbdb.ref("reports").orderByChild("t").startAt(Date.now()-24*3600e3).on("value",snap=>{
     const o=snap.val()||{}; reports=Object.keys(o).map(k=>Object.assign({id:k},o[k])).filter(valid);
-    render(); if(nav) navRecheck(); if($("adm").style.display==="flex") renderAdmin(); if($("acm").style.display==="block"&&setTab==="activity") renderAccount(); },()=>{});
+    checkNewReports(); render(); if(nav) navRecheck(); if($("adm").style.display==="flex") renderAdmin(); if($("acm").style.display==="block"&&setTab==="activity") renderAccount(); },()=>{});
   fbdb.ref("flags").on("value",snap=>{ flags=snap.val()||{}; render(); if($("adm").style.display==="flex") renderAdmin(); },()=>{});
 }
 
@@ -448,6 +468,7 @@ $("phx").onclick=()=>{ $("phm").style.display="none"; };
 $("phm").addEventListener("click",e=>{ if(e.target===$("phm")) $("phm").style.display="none"; });
 function badge(r){ const n=flagN(r), fl=n>0?" · 🚩 "+n+(n===1?" flag":" flags"):""; return (r.av?'<span style="color:var(--g)">🛡️ Confirmed by admin</span>':badge0(r))+fl; }
 function badge0(r){
+  if(r.auto) return '<span style="color:var(--gr)">📡 Auto-detected from traffic data (not yet confirmed by a person)</span>';
   const far=(r.rd!==undefined&&r.rd>300)?" · reported from "+(r.rd>=1000?(r.rd/1000).toFixed(1)+" km":r.rd+" m")+" away":"";
   if(r.v===2) return '<span style="color:var(--g)">📸 Photo-verified'+(r.pk==="geo"?" (GPS-tagged photo)":r.pk==="live"?" (live photo on location)":"")+'</span>';
   if(r.v===1) return '<span style="color:var(--g)">📍 Reporter was on location</span>'+(r.ph?" · 📷 photo (location not matched)":"");
@@ -700,6 +721,8 @@ function gotPos(lat,lng,h,sp,acc){
   if(!meMarker) meMarker=L.marker(me,{icon:L.divIcon({className:"",html:'<div class="me"><div class="rot"><b></b><i></i></div></div>',iconSize:[26,26],iconAnchor:[13,13]}),zIndexOffset:1000}).addTo(map); else meMarker.setLatLng(me);
   const el=meMarker.getElement(), rot=el&&el.querySelector(".rot"); if(rot) rot.style.transform="rotate("+heading+"deg)";
   if(first&&!nav) map.setView(me,15);
+  if(first) setTimeout(()=>{ pollAuto(); pollWx(); },600);
+  syncSub();
   if(nav) navTick();
 }
 function endSim(){ if(sim){ if(sim.t) clearInterval(sim.t); sim=null; } }
@@ -783,6 +806,153 @@ $("navx").onclick=endNav;
 $("navc").onclick=()=>{ if(!nav) return; nav.follow=true; $("navc").style.display="none"; if(me) map.panTo(me,{animate:true}); };
 $("navm").onclick=()=>{ if(!nav) return; nav.mute=!nav.mute; $("navm").textContent=nav.mute?"🔇 Voice off":"🔊 Voice on"; if(nav.mute){ stopSpeak(); } };
 $("navr").onclick=()=>{ if(!me) return; pending={lat:me[0],lng:me[1]}; if(pendMarker) map.removeLayer(pendMarker); pendMarker=L.marker(pending).addTo(map); sheet(); };
+
+// ---- automatic flood detection + alerts ----
+// 1) TomTom traffic incidents marked as flooding   2) rain / river watch (Open-Meteo)   3) notifications
+let autoOn=!!TOMTOM_KEY; try{ const v=localStorage.getItem("fwauto"); if(v!==null) autoOn=v==="1"&&!!TOMTOM_KEY; }catch(e){}
+let alertsOn=false, alertKm=5; try{ const a=JSON.parse(localStorage.getItem("fwalerts")||"{}"); alertsOn=!!a.on; if([2,5,10,20].indexOf(a.km)>=0) alertKm=a.km; }catch(e){}
+const saveAlerts=()=>{ try{ localStorage.setItem("fwalerts",JSON.stringify({on:alertsOn,km:alertKm})); }catch(e){} };
+let autoSig="", autoSeen={}, lastAuto=null, autoMoveTimer=null, seenIds=null, wxLevelSent=0, notified={}, notifTimes=[];
+const alertOrigin=()=>{ if(me) return me; const c=map.getCenter(); return [c.lat,c.lng]; };
+const kmTo=(lat,lng)=>hav(alertOrigin(),[lat,lng])/1000;
+const LN=()=>IS_APP&&window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.LocalNotifications;
+async function enableAlerts(){
+  try{
+    const ln=LN();
+    if(ln){ const p=await ln.requestPermissions(); return !!p&&p.display==="granted"; }
+    if("Notification" in window) return (await Notification.requestPermission())==="granted";
+  }catch(e){}
+  return false;
+}
+async function notify(title,body,tag,force){
+  if(!alertsOn) return false;
+  const now=Date.now(); notifTimes=notifTimes.filter(t=>now-t<3600e3);
+  if(!force){ if(notified[tag]&&now-notified[tag]<10*60e3) return false; if(notifTimes.length>=6) return false; }
+  notified[tag]=now; notifTimes.push(now);
+  if(!pending) idle("🔔 "+title,body);
+  try{
+    const ln=LN();
+    if(ln){ await ln.schedule({notifications:[{id:Math.floor(Math.random()*2e9),title:title,body:body,schedule:{at:new Date(Date.now()+400)}}]}); return true; }
+    if("Notification" in window&&Notification.permission==="granted"){
+      const reg=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration();
+      if(reg&&reg.showNotification) await reg.showNotification(title,{body:body,tag:tag,icon:"icon-192.png",badge:"icon-192.png"}); else new Notification(title,{body:body,tag:tag});
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+function checkNewReports(){
+  const ids={}; reports.forEach(r=>{ ids[r.id]=1; });
+  if(seenIds===null){ seenIds=ids; return; }
+  reports.forEach(r=>{
+    if(seenIds[r.id]) return; seenIds[r.id]=1;
+    if(r.s==="ok"||(user&&r.uid===user.uid)||Date.now()-r.t>10*60e3) return;
+    const km=kmTo(r.lat,r.lng); if(km>alertKm) return;
+    notify("⚠️ Flood reported nearby",LBL[r.s]+" · "+DEPTH[r.d]+" · "+km.toFixed(1)+" km away"+(r.v===2?" · photo-verified":""),"rep"+r.id);
+  });
+}
+async function pollAuto(){
+  if(!TOMTOM_KEY||!autoOn){ if(autoReports.length){ autoReports=[]; render(); } return; }
+  const c=me?{lat:me[0],lng:me[1]}:map.getCenter(), dLat=0.12, dLng=0.12/Math.max(0.2,Math.cos(c.lat*Math.PI/180));
+  const fields="{incidents{type,geometry{type,coordinates},properties{id,iconCategory,events{description,iconCategory},from,to,startTime}}}";
+  try{
+    const j=await (await fetch("https://api.tomtom.com/traffic/services/5/incidentDetails?key="+TOMTOM_KEY+"&bbox="+[c.lng-dLng,c.lat-dLat,c.lng+dLng,c.lat+dLat].join(",")+"&fields="+encodeURIComponent(fields)+"&language=en-GB&timeValidityFilter=present")).json();
+    lastAuto=[c.lat,c.lng]; const now=Date.now(), list=[];
+    (j.incidents||[]).forEach(inc=>{
+      const p=inc.properties||{}, ev=p.events||[], desc=ev.map(e=>e.description||"").filter(Boolean).join("; ");
+      const flood=p.iconCategory===11||ev.some(e=>e.iconCategory===11)||/flood|baha/i.test(desc);
+      if(!flood||!inc.geometry) return;
+      const co=inc.geometry.type==="Point"?inc.geometry.coordinates:(inc.geometry.coordinates||[])[Math.floor(((inc.geometry.coordinates||[]).length-1)/2)];
+      if(!co||!isFinite(co[0])||!isFinite(co[1])) return;
+      const closed=p.iconCategory===8||ev.some(e=>e.iconCategory===8)||/closed|impassable/i.test(desc);
+      const key=String(p.id||(co[1].toFixed(4)+","+co[0].toFixed(4))), id="a"+key.replace(/[^a-z0-9]/gi,"").toLowerCase().slice(0,20);
+      if(!autoSeen[id]||now-autoSeen[id]>2*3600e3){ const fresh=!autoSeen[id]; autoSeen[id]=now;
+        if(fresh&&kmTo(co[1],co[0])<=alertKm) notify("📡 Flooding detected nearby",(closed?"Road closed · ":"")+(desc||"Flooded road")+" · "+kmTo(co[1],co[0]).toFixed(1)+" km away","auto"+id); }
+      list.push({id:id,auto:1,lat:co[1],lng:co[0],s:closed?"block":"risk",d:0,t:autoSeen[id],v:0,desc:desc,from:p.from||""});
+    });
+    const sig=list.map(x=>x.id).sort().join(); const changed=sig!==autoSig; autoSig=sig; autoReports=list; render(); if(changed){ if(nav) navRecheck(); else if(dest) routeTo(dest); }
+  }catch(e){}
+}
+async function pollWx(){
+  const c=me?{lat:me[0],lng:me[1]}:map.getCenter(), wb=$("wxb"); let html="";
+  try{
+    const j=await (await fetch("https://api.open-meteo.com/v1/forecast?latitude="+c.lat.toFixed(3)+"&longitude="+c.lng.toFixed(3)+"&current=precipitation&hourly=precipitation&past_hours=2&forecast_hours=3&timezone=auto")).json();
+    const vals=((j.hourly&&j.hourly.precipitation)||[]).map(Number).filter(isFinite).concat([+((j.current||{}).precipitation)||0]), peak=Math.max.apply(null,vals.concat([0]));
+    const lvl=peak>=30?3:peak>=15?2:peak>=7.5?1:0;
+    if(lvl){ const nm=["","Heavy rain","Intense rain","Torrential rain"][lvl];
+      html+='<div class="msg '+(lvl===1?"risk":"block")+'">🌧️ <b>'+nm+' near you</b> (about '+Math.round(peak)+' mm in an hour). Low-lying roads may flood. '+(lvl>=2?"Avoid underpasses and rivers.":"Drive carefully.")+'</div>';
+      if(lvl>=2&&lvl>wxLevelSent){ wxLevelSent=lvl; notify("🌧️ "+nm+" near you","About "+Math.round(peak)+" mm in an hour. Expect flooding in low areas.","rain"+lvl); }
+    } else wxLevelSent=0;
+  }catch(e){}
+  try{
+    const f=await (await fetch("https://flood-api.open-meteo.com/v1/flood?latitude="+c.lat.toFixed(3)+"&longitude="+c.lng.toFixed(3)+"&daily=river_discharge&past_days=30&forecast_days=3")).json();
+    const q=((f.daily&&f.daily.river_discharge)||[]).map(Number).filter(isFinite);
+    if(q.length>=20){ const past=q.slice(0,q.length-4), base=past.reduce((a,x)=>a+x,0)/past.length, nxt=Math.max.apply(null,q.slice(-4));
+      if(base>0&&nxt/base>=2) html+='<div class="msg info">🌊 River flow nearby is forecast at <b>'+(nxt/base).toFixed(1)+'×</b> its 30-day average (satellite model estimate, may miss small rivers and creeks).</div>'; }
+  }catch(e){}
+  if(wb) wb.innerHTML=html;
+}
+if(TOMTOM_KEY){
+  $("aut").style.display=""; $("aut").classList.toggle("on",autoOn);
+  $("aut").onclick=()=>{ autoOn=!autoOn; try{ localStorage.setItem("fwauto",autoOn?"1":"0"); }catch(e){} $("aut").classList.toggle("on",autoOn); pollAuto(); };
+}
+map.on("moveend",()=>{ clearTimeout(autoMoveTimer); autoMoveTimer=setTimeout(()=>{ const c=map.getCenter(); if(!lastAuto||hav([c.lat,c.lng],lastAuto)>6000) pollAuto(); },1500); });
+setInterval(()=>{ pollAuto(); },5*60e3);
+setInterval(()=>{ pollWx(); },15*60e3);
+setTimeout(()=>{ pollAuto(); pollWx(); },2000);
+
+// ---- alerts when the app is closed (push notifications through Firebase Cloud Messaging) ----
+let pushToken=null, subPath=null, lastSubSync=0, lastSubPos=null;
+const pushPlugin=()=>IS_APP&&window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.PushNotifications;
+const tidOf=t=>String(t).replace(/[^A-Za-z0-9_-]/g,"_").slice(-40);
+async function webPushOK(){
+  try{ return !IS_APP&&!!FB_VAPID&&!!FB_CONFIG.messagingSenderId&&"serviceWorker" in navigator&&"PushManager" in window&&typeof firebase.messaging==="function"&&await firebase.messaging.isSupported(); }catch(e){ return false; }
+}
+function pushStatusText(){
+  if(!FB_ON) return "Alerts when the app is closed need the shared database (Firebase).";
+  if(!user) return "Sign in to also get alerts when the app is closed.";
+  if(!user.emailVerified) return "Verify your email to get alerts when the app is closed.";
+  if(pushToken&&subPath) return "📨 Alerts when the app is closed: ON for this device.";
+  if(IS_APP&&!pushPlugin()) return "This app build doesn’t include closed-app alerts yet (see PUSH-SETUP.md).";
+  if(!IS_APP&&!(FB_VAPID&&FB_CONFIG.messagingSenderId)) return "Closed-app alerts on the website need setup (see PUSH-SETUP.md).";
+  return alertsOn?"Closed-app alerts aren’t active yet. Allow notifications and make sure location is on, then turn alerts off and on again.":"Turn alerts on to also get them when the app is closed.";
+}
+async function enablePush(){
+  try{
+    if(!FB_ON||!user||!user.emailVerified) return false;
+    let token=null;
+    if(IS_APP){
+      const pn=pushPlugin(); if(!pn) return false;
+      const p=await pn.requestPermissions(); if(!p||p.receive!=="granted") return false;
+      try{ await pn.createChannel({id:"floods",name:"Flood alerts",description:"Flood reports and warnings near you",importance:5,visibility:1}); }catch(e){}
+      token=await new Promise(res=>{ let hs=[], done=false;
+        const fin=v=>{ if(done) return; done=true; hs.forEach(h=>{ try{ h.remove(); }catch(e){} }); res(v); };
+        pn.addListener("registration",t=>fin(t&&t.value)).then(h=>hs.push(h)); pn.addListener("registrationError",()=>fin(null)).then(h=>hs.push(h));
+        setTimeout(()=>fin(null),15000); pn.register().catch(()=>fin(null)); });
+    } else {
+      if(!(await webPushOK())) return false;
+      const reg=await navigator.serviceWorker.getRegistration(); if(!reg) return false;
+      if(Notification.permission!=="granted"&&(await Notification.requestPermission())!=="granted") return false;
+      token=await firebase.messaging().getToken({vapidKey:FB_VAPID,serviceWorkerRegistration:reg});
+    }
+    if(!token) return false;
+    pushToken=token; await syncSub(true);
+    if($("acm").style.display==="block"&&setTab==="account") renderAccount();
+    return !!subPath;
+  }catch(e){ return false; }
+}
+// tells the server roughly where this phone is, so it knows whether a new report is nearby
+async function syncSub(force){
+  if(!FB_ON||!user||!user.emailVerified||!pushToken||!alertsOn||!me) return;
+  const now=Date.now(); if(!force&&lastSubPos&&hav(lastSubPos,me)<1000&&now-lastSubSync<30*60e3) return;
+  const path="subs/"+user.uid+"/"+tidOf(pushToken);
+  try{ await fbdb.ref(path).update({token:pushToken,lat:+me[0].toFixed(3),lng:+me[1].toFixed(3),km:alertKm,p:IS_APP?"android":"web",t:firebase.database.ServerValue.TIMESTAMP});
+    subPath=path; lastSubSync=now; lastSubPos=me.slice(); }catch(e){}
+}
+async function dropSub(){
+  const path=subPath; subPath=null; lastSubPos=null;
+  if(path&&FB_ON) try{ await fbdb.ref(path).remove(); }catch(e){}
+}
 
 // ---- emergency help ----
 // Edit this list to add your city or barangay hotlines (please double-check numbers before launch)
