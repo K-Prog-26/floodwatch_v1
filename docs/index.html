@@ -248,7 +248,23 @@ function gate(){
   if(banned){ idle("Account restricted","Your account can’t send reports right now."); return false; }
   return true;
 }
-function authErr(e){ const m={"auth/invalid-credential":"Wrong email or password.","auth/wrong-password":"Wrong email or password.","auth/user-not-found":"No account with that email.","auth/email-already-in-use":"That email already has an account. Try Sign in.","auth/weak-password":"Password needs at least 6 characters.","auth/invalid-email":"That email doesn’t look right.","auth/popup-closed-by-user":"Sign-in was cancelled.","auth/unauthorized-domain":"This website address isn’t authorized in Firebase yet.","auth/too-many-requests":"Too many tries. Please wait a bit."}; return m[e&&e.code]||((e&&e.message)||"Something went wrong."); }
+function authErr(e){ const m={"auth/invalid-credential":"Wrong email or password.","auth/wrong-password":"Wrong email or password.","auth/user-not-found":"No account with that email.","auth/email-already-in-use":"That email already has an account. Try Sign in.","auth/weak-password":"Password needs at least 6 characters.","auth/invalid-email":"That email doesn’t look right.","auth/popup-closed-by-user":"Sign-in was cancelled.","auth/unauthorized-domain":"This website address isn’t authorized in Firebase yet.","auth/too-many-requests":"Too many tries. Please wait a bit.","auth/requires-recent-login":"For safety, please sign out, sign in again, and try once more.","auth/network-request-failed":"No internet connection. Please try again.","auth/missing-email":"Type your email first.","auth/user-disabled":"This account has been disabled."}; return m[e&&e.code]||((e&&e.message)||"Something went wrong."); }
+// ---- forgot / change password ----
+let lastReset=0;
+async function sendReset(email,show){
+  const w=60-(Date.now()-lastReset)/1000;
+  if(w>0){ show("Please wait "+Math.ceil(w)+" seconds before asking for another email.","risk"); return; }
+  try{ await fbauth.sendPasswordResetEmail(email); lastReset=Date.now(); show("We sent a password link to "+email+". Check your inbox and your spam folder.","ok"); }
+  catch(e){ show(authErr(e),"risk"); }
+}
+function pwCard(){
+  const hasPw=(user.providerData||[]).some(p=>p.providerId==="password");
+  if(!hasPw) return '<div class="sc"><b>🔑 Password</b><div class="small">You signed in with Google, so your password is managed by your Google account. You can also add a password to sign in with your email.</div><button class="nb" id="pwset">Email me a link to set a password</button><div id="pwres"></div></div>';
+  return '<div class="sc"><b>🔑 Change password</b><input id="pwcur" type="password" placeholder="Current password" autocomplete="current-password"><input id="pwnew" type="password" placeholder="New password (6+ characters, 8+ is safer)" autocomplete="new-password"><input id="pwnew2" type="password" placeholder="Repeat new password" autocomplete="new-password">'+
+    '<label class="small" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="pwshow" style="flex:none;width:auto;padding:0"> Show passwords</label><button class="go" id="pwgo" style="padding:11px">Change password</button>'+
+    '<button class="nb" id="pwforgot" style="border:0;background:none;text-decoration:underline;font-size:.82rem">I forgot my current password</button><div id="pwres"></div></div>';
+}
+
 // ---- settings page: account, activity, history ----
 let setTab="account", histList=[];
 function openSettings(tab,msg){ setTab=tab||"account"; showLayer($("acm"),"block"); $("acm").scrollTop=0; renderAccount(msg); }
@@ -284,7 +300,9 @@ function accountTab(msg){
     h+='<div class="sc"><b>Sign in to report</b><div class="small">Anyone can view the map. Reports need a verified account to stop fake news.</div>'+(msg?'<div class="msg risk">'+esc(msg)+'</div>':"")+
       (IS_APP?'<div class="small">Google sign-in works on the website. In the app, use email and password.</div>':'<button class="nb" id="agoog">Continue with Google</button>')+
       '<input id="aem" type="email" placeholder="Email" autocomplete="email"><input id="apw" type="password" placeholder="Password (6+ characters)" autocomplete="current-password">'+
-      '<div class="row"><button class="go" id="ain" style="flex:1;padding:11px">Sign in</button><button class="nb" id="aup" style="flex:1">Create account</button></div><div id="aerr"></div></div>';
+      '<div class="row"><button class="go" id="ain" style="flex:1;padding:11px">Sign in</button><button class="nb" id="aup" style="flex:1">Create account</button></div>'+
+      '<button class="nb" id="aforgot" style="border:0;background:none;text-decoration:underline;padding:4px;font-size:.85rem">Forgot password?</button>'+
+      '<label class="small" style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="ashow" style="flex:none;width:auto;padding:0"> Show password</label><div id="aerr"></div></div>';
   } else if(FB_ON){
     const m=user.metadata||{};
     h+='<div class="sc"><b style="font-size:1.05rem">👤 '+esc(user.displayName||user.email||"Signed in")+'</b><div class="small">'+esc(user.email||"")+'</div>'+
@@ -292,7 +310,7 @@ function accountTab(msg){
       (user.emailVerified?'<div class="msg ok">✅ Email verified. You can send reports.</div>':'<div class="msg risk">Please verify your email. We sent you a link.<div class="row" style="margin-top:6px"><button class="nb" id="averi" style="flex:1">I’ve verified</button><button class="nb" id="aresend" style="flex:1">Resend</button></div></div>')+
       (banned?'<div class="msg block">This account is restricted.</div>':"")+
       '<div class="small">Your user ID:<br><code style="word-break:break-all">'+esc(user.uid)+'</code></div><button class="nb" id="acopy">Copy ID</button>'+
-      (isAdmin?'<button class="go" id="aadm" style="padding:11px">🛡️ Admin panel</button>':"")+'<div id="aerr"></div><button class="nb" id="aout">Sign out</button></div>';
+      (isAdmin?'<button class="go" id="aadm" style="padding:11px">🛡️ Admin panel</button>':"")+'<div id="aerr"></div><button class="nb" id="aout">Sign out</button></div>'+pwCard();
   } else h+='<div class="sc"><b>Saved on this device</b><div class="small">Shared reports and sign-in are switched off, so your reports stay on this phone.</div></div>';
   h+='<div class="sc"><b>Appearance</b><div class="chips" style="margin:0">'+[["auto","🌗 Auto"],["light","☀️ Light"],["dark","🌙 Dark"]].map(t=>'<button data-th="'+t[0]+'" class="'+(themePref===t[0]?"on":"")+'">'+t[1]+'</button>').join("")+'</div>'+
     '<div class="small" style="margin-top:6px">Map style</div><div class="chips" style="margin:0">'+[["auto","✨ Auto"],TOMTOM_KEY?["tomtom","🗺️ TomTom"]:null,MAPTILER_KEY?["maptiler","🧭 MapTiler"]:null,["esri","🏙️ Esri"],["osm","🌍 OpenStreetMap"]].filter(Boolean).map(t=>'<button data-ms="'+t[0]+'" class="'+(mapStyle===t[0]?"on":"")+'">'+t[1]+'</button>').join("")+'</div></div>';
@@ -320,6 +338,31 @@ function accountTab(msg){
   if($("agoog")) $("agoog").onclick=async()=>{ try{ await fbauth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }catch(e){ err(authErr(e)); } };
   if($("ain")) $("ain").onclick=async()=>{ try{ await fbauth.signInWithEmailAndPassword($("aem").value.trim(),$("apw").value); }catch(e){ err(authErr(e)); } };
   if($("aup")) $("aup").onclick=async()=>{ try{ const c=await fbauth.createUserWithEmailAndPassword($("aem").value.trim(),$("apw").value); await c.user.sendEmailVerification(); }catch(e){ err(authErr(e)); } };
+  if($("aforgot")) $("aforgot").onclick=()=>{
+    const em=$("aem").value.trim(), box=$("aerr");
+    const show=(t,c)=>{ if(box) box.innerHTML='<div class="msg '+c+'">'+esc(t)+'</div>'; };
+    if(!em){ show("Type your email in the box above first, then tap Forgot password.","risk"); return; }
+    sendReset(em,show);
+  };
+  if($("ashow")) $("ashow").onchange=()=>{ $("apw").type=$("ashow").checked?"text":"password"; };
+  const pr=(t,c)=>{ const e=$("pwres"); if(e) e.innerHTML='<div class="msg '+c+'">'+esc(t)+'</div>'; };
+  if($("pwgo")) $("pwgo").onclick=async()=>{
+    const cur=$("pwcur").value, n1=$("pwnew").value, n2=$("pwnew2").value;
+    if(!cur){ pr("Type your current password.","risk"); return; }
+    if(n1.length<6){ pr("The new password needs at least 6 characters.","risk"); return; }
+    if(n1!==n2){ pr("The two new passwords don’t match.","risk"); return; }
+    if(n1===cur){ pr("Choose a password that is different from the current one.","risk"); return; }
+    $("pwgo").disabled=true;
+    try{
+      await user.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(user.email,cur));
+      await user.updatePassword(n1);
+      ["pwcur","pwnew","pwnew2"].forEach(i=>{ if($(i)) $(i).value=""; }); pr("✅ Your password was changed.","ok");
+    }catch(e){ pr((e&&(e.code==="auth/invalid-credential"||e.code==="auth/wrong-password"))?"Your current password is wrong.":authErr(e),"risk"); }
+    if($("pwgo")) $("pwgo").disabled=false;
+  };
+  if($("pwforgot")) $("pwforgot").onclick=()=>sendReset(user.email,pr);
+  if($("pwset")) $("pwset").onclick=()=>sendReset(user.email,pr);
+  if($("pwshow")) $("pwshow").onchange=()=>{ ["pwcur","pwnew","pwnew2"].forEach(i=>{ if($(i)) $(i).type=$("pwshow").checked?"text":"password"; }); };
   if($("averi")) $("averi").onclick=async()=>{ try{ await user.reload(); await user.getIdToken(true); user=fbauth.currentUser; renderAccount(); }catch(e){ err(authErr(e)); } };
   if($("aresend")) $("aresend").onclick=async()=>{ try{ await user.sendEmailVerification(); err("Verification email sent. Check your inbox and spam folder."); }catch(e){ err(authErr(e)); } };
   if($("acopy")) $("acopy").onclick=()=>{ try{ navigator.clipboard.writeText(user.uid); $("acopy").textContent="Copied ✓"; }catch(e){} };
