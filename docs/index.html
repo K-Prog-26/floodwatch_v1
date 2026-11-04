@@ -82,7 +82,7 @@ select{padding:9px 10px;border:1px solid var(--line);border-radius:10px;backgrou
   <div class="pois" id="trfrow" style="margin-top:6px"><button id="thm">🌗 Auto</button><button id="aut" style="display:none">📡 Auto-detect</button><button id="sat">🛰️ Satellite</button><button id="trf" style="display:none">🚦 Live traffic</button></div>
   <div id="res"></div>
   <div class="leg"><span><i style="background:#1fa463"></i>Passable</span><span><i style="background:#f0a020"></i>Risky</span><span><i style="background:#e04545"></i>Not passable</span><span>┄ Dashed = unverified</span><span id="sync"></span></div>
-  <div id="wxb"></div>
+  <div id="wxb"></div><div id="svc"></div>
 </div>
 <div class="navb" id="nav" style="display:none">
   <div class="row" style="align-items:center"><div id="navi" style="font-size:2.4rem;line-height:1">⬆️</div>
@@ -122,7 +122,7 @@ select{padding:9px 10px;border:1px solid var(--line);border-radius:10px;backgrou
 const DB = ""; // (old setting, no longer used – Firebase below replaces it)
 // Shared reports + sign-in + admin: create a free Firebase project and paste its web-app config here (see FIREBASE-SETUP.md).
 // Leave apiKey empty to run in "this device only" mode.
-const FB_VAPID = "BCiOyz9jWDkkPFF8DoV6PUV4-siwMU-mSKU4k5IY73KDw0-KEkbsi01WWGg4koZ3YY08Aidh_WCjGKFYAq1LJiE"; // Web push key: Firebase console > Project settings > Cloud Messaging > Web Push certificates (only for alerts on the website)
+const FB_VAPID = ""; // Web push key: Firebase console > Project settings > Cloud Messaging > Web Push certificates (only for alerts on the website)
 const FB_CONFIG = { messagingSenderId:"", apiKey:"AIzaSyDM_0D3_5WMLWBRiXxap7j2_6FsjHuS5Ug", authDomain:"floodwatch-v1.firebaseapp.com", databaseURL:"https://floodwatch-v1-default-rtdb.asia-southeast1.firebasedatabase.app", projectId:"floodwatch-v1", appId:"1:523645522276:web:f49354d12dd3bc0df6ea71" };
 const FB_ON = !!FB_CONFIG.apiKey && typeof firebase !== "undefined";
 // true when running inside the Android app (Capacitor), false on the website
@@ -293,6 +293,7 @@ function accountTab(msg){
   h+='<div class="sc"><b>Appearance</b><div class="chips" style="margin:0">'+[["auto","🌗 Auto"],["light","☀️ Light"],["dark","🌙 Dark"]].map(t=>'<button data-th="'+t[0]+'" class="'+(themePref===t[0]?"on":"")+'">'+t[1]+'</button>').join("")+'</div></div>';
   h+='<div class="sc"><b>Reporting</b><div class="small">'+(isAdmin?"As an admin you can send reports without waiting.":"You can send a new report every "+COOLDOWN_S+" seconds.")+' When someone marks a flooded road as cleared, it leaves the map after '+CLEAR_HIDE_S+' seconds.</div></div>';
   h+='<div class="sc"><b>🔔 Flood alerts</b><div class="small">Get a notification when someone reports a flood near you, a flooded road is detected, or heavy rain starts. Works while the app is open or running in the background.</div><button class="nb" id="altog">'+(alertsOn?"🔔 Alerts are ON (tap to turn off)":"🔕 Alerts are OFF (tap to turn on)")+'</button><div class="small">Alert distance</div><select id="akm">'+[2,5,10,20].map(k=>'<option value="'+k+'"'+(alertKm===k?" selected":"")+'>'+k+' km from me</option>').join("")+'</select><button class="nb" id="atest">Send a test alert</button><div class="small" id="pst">'+pushStatusText()+'</div><div class="small">When you turn on closed-app alerts, your approximate location (about 100 m) and a device code are saved so the server knows who is nearby. Turn alerts off to delete them.</div><div id="ares"></div></div>';
+  h+='<div class="sc"><b>🔧 Check map services</b><div class="small">Tests the map, live traffic, search, routing and flood detection with your TomTom key and tells you what is blocked.</div><button class="nb" id="chk">Run check</button><div id="chkres"></div></div>';
   h+='<div class="sc"><b>Navigation voice</b><div class="small">Spoken turn-by-turn directions. Make sure your media volume is up.</div><button class="nb" id="vtest">🔊 Test voice</button><div id="vres"></div></div>';
   b.innerHTML=h;
   $("altog").onclick=async()=>{
@@ -307,6 +308,7 @@ function accountTab(msg){
     const ok=await notify("🌊 FloodWatch test","Alerts are working.","test"+Date.now(),true);
     $("ares").innerHTML=ok?'<div class="msg ok">✅ Test alert sent. Check your notifications.</div>':'<div class="msg risk">Couldn’t show a notification. Check that notifications are allowed for this app.</div>';
   };
+  $("chk").onclick=checkServices;
   $("vtest").onclick=async()=>{ $("vres").innerHTML='<div class="small">Speaking…</div>'; const ok=await speakText("Voice guidance is working."); $("vres").innerHTML=ok?'<div class="msg ok">✅ If you heard the voice, you are all set.</div>':'<div class="msg risk">Voice isn’t available on this device. Check that a text-to-speech engine (such as Google Text-to-speech) is installed, then try again.</div>'; };
   b.querySelectorAll("[data-th]").forEach(x=>x.onclick=()=>{ themePref=x.dataset.th; try{ localStorage.setItem("fwtheme",themePref); }catch(e){} applyTheme(); renderAccount(); });
   if($("agoog")) $("agoog").onclick=async()=>{ try{ await fbauth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }catch(e){ err(authErr(e)); } };
@@ -954,6 +956,27 @@ async function dropSub(){
   if(path&&FB_ON) try{ await fbdb.ref(path).remove(); }catch(e){}
 }
 
+// ---- service check (helps find out why the map or traffic does not load) ----
+async function checkServices(){
+  const out=$("chkres"); if(!out) return;
+  if(!TOMTOM_KEY){ out.innerHTML='<div class="msg risk">No TomTom key is set in this app, so the backup map is used.</div>'; return; }
+  out.innerHTML='<div class="small">Checking…</div>';
+  const K=TOMTOM_KEY, inc="https://api.tomtom.com/traffic/services/5/incidentDetails?key="+K+"&bbox=120.95,14.45,121.05,14.55&fields="+encodeURIComponent("{incidents{type}}")+"&language=en-GB&timeValidityFilter=present";
+  const T=[["Map tiles","https://api.tomtom.com/map/1/tile/basic/main/10/856/470.png?key="+K],
+    ["Night map tiles","https://api.tomtom.com/map/1/tile/basic/night/10/856/470.png?key="+K],
+    ["Live traffic tiles","https://api.tomtom.com/traffic/map/4/tile/flow/relative/10/856/470.png?key="+K],
+    ["Place search","https://api.tomtom.com/search/2/search/manila.json?key="+K+"&limit=1"],
+    ["Routing","https://api.tomtom.com/routing/1/calculateRoute/14.50,121.00:14.55,121.00/json?key="+K],
+    ["Flood detection (traffic incidents)",inc],
+    ["Rain forecast (Open-Meteo)","https://api.open-meteo.com/v1/forecast?latitude=14.5&longitude=121&current=precipitation"]];
+  const why=c=>c===0?"couldn’t connect. You may be offline, or the key doesn’t allow this website.":(c===401||c===403)?"the key isn’t allowed for this service or website. Check ‘Allowed domains’ and the enabled products for the key in your TomTom dashboard.":c===429?"free limit reached for now.":c===404?"service not found.":"error "+c+".";
+  const rows=await Promise.all(T.map(async t=>{
+    try{ const r=await fetch(t[1]); let m=""; if(!r.ok){ try{ m=(await r.text()).replace(/<[^>]*>/g," ").replace(/\s+/g," ").trim().slice(0,120); }catch(e){} } return [t[0],r.ok,r.status,m]; }
+    catch(e){ return [t[0],false,0,""]; } }));
+  out.innerHTML='<div class="small">This page: <b>'+esc(location.origin)+'</b> (it must be in your key’s allowed domains)</div>'+
+    rows.map(r=>'<div class="arow"><div>'+(r[1]?"✅":"❌")+" <b>"+esc(r[0])+"</b>"+(r[1]?"":'<br><span class="small">HTTP '+r[2]+': '+esc(why(r[2]))+(r[3]?" Message: "+esc(r[3]):"")+"</span>")+"</div></div>").join("");
+}
+
 // ---- emergency help ----
 // Edit this list to add your city or barangay hotlines (please double-check numbers before launch)
 const HOTLINES=[["National Emergency Hotline","911"],["Philippine Red Cross","143"]];
@@ -981,10 +1004,20 @@ async function nearest(kind){
 let themePref="auto"; try{ themePref=localStorage.getItem("fwtheme")||"auto"; }catch(e){}
 const darkMQ=window.matchMedia?window.matchMedia("(prefers-color-scheme: dark)"):null;
 const isDark=()=>themePref==="dark"||(themePref==="auto"&&!!darkMQ&&darkMQ.matches);
+let ttFellBack=false, ttErr=0, ttOk=0;
+function svcMsg(t){ const e=$("svc"); if(e) e.innerHTML=t?'<div class="msg risk">'+t+'</div>':""; }
+// If the TomTom map tiles can't be loaded (for example the key isn't allowed on this website), switch to a backup map
+function mapFallback(){
+  ttFellBack=true;
+  if(baseLayer){ baseLayer.options.maxNativeZoom=19; baseLayer.setUrl("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"); }
+  try{ map.attributionControl.addAttribution("Tiles © Esri"); }catch(e){}
+  svcMsg("⚠️ TomTom map tiles aren’t loading, so a backup map is shown. Open ⚙️ Settings → Account → 🔧 Check map services to see why.");
+  syncTiles();
+}
 function syncTiles(){
-  const dk=isDark();
-  if(TOMTOM_KEY&&baseLayer) baseLayer.setUrl("https://api.tomtom.com/map/1/tile/basic/"+(dk?"night":"main")+"/{z}/{x}/{y}.png?key="+TOMTOM_KEY);
-  $("map").classList.toggle("darktiles",dk&&!TOMTOM_KEY&&!satOn);
+  const dk=isDark(), tt=!!TOMTOM_KEY&&!ttFellBack;
+  if(tt&&baseLayer) baseLayer.setUrl("https://api.tomtom.com/map/1/tile/basic/"+(dk?"night":"main")+"/{z}/{x}/{y}.png?key="+TOMTOM_KEY);
+  $("map").classList.toggle("darktiles",dk&&!tt&&!satOn);
 }
 function applyTheme(){
   const dk=isDark(); document.documentElement.setAttribute("data-theme",dk?"dark":"light");
@@ -998,6 +1031,10 @@ if(darkMQ&&darkMQ.addEventListener) darkMQ.addEventListener("change",applyTheme)
 // ---- satellite view (Esri World Imagery + place labels) ----
 let baseLayer=null; map.eachLayer(l=>{ if(l instanceof L.TileLayer) baseLayer=l; });
 if(baseLayer) baseLayer.setZIndex(1);
+if(baseLayer&&TOMTOM_KEY){
+  baseLayer.on("tileload",()=>{ ttOk++; });
+  baseLayer.on("tileerror",()=>{ if(!ttFellBack&&ttOk===0&&++ttErr>=3) mapFallback(); });
+}
 const satLayer=L.layerGroup([
   L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxNativeZoom:18,maxZoom:22,zIndex:1,attribution:"Imagery © Esri, Maxar, Earthstar Geographics"}),
   L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",{maxNativeZoom:18,maxZoom:22,zIndex:2,opacity:.95})
@@ -1020,6 +1057,9 @@ if(TOMTOM_KEY){
   let on=false; try{ on=localStorage.getItem("fwt")==="1"; }catch(e){}
   const apply=()=>{ if(on) trafficLayer.addTo(map); else map.removeLayer(trafficLayer); $("trf").classList.toggle("on",on); try{ localStorage.setItem("fwt",on?"1":"0"); }catch(e){} };
   $("trf").onclick=()=>{ on=!on; apply(); }; apply();
+  let trOk=0, trErr=0;
+  trafficLayer.on("tileload",()=>{ trOk++; });
+  trafficLayer.on("tileerror",()=>{ if(trOk===0&&++trErr===4){ on=false; apply(); svcMsg("🚦 Live traffic isn’t loading with this key. Open ⚙️ Settings → Account → 🔧 Check map services to see why."); } });
 }
 initFirebase();
 poiChips(); poiLoad();
