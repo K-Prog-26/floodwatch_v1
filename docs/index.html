@@ -149,10 +149,12 @@ const $ = id => document.getElementById(id);
 const map = L.map("map",{zoomControl:false}).setView([14.4793,121.0198],14);
 L.control.zoom({position:"bottomright"}).addTo(map);
 // Hosted on a website: official OpenStreetMap tiles. Opened as a local file: Esri tiles (OSM blocks file:// pages).
-if(location.protocol==="http:"||location.protocol==="https:")
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:22,maxNativeZoom:19,attribution:"© OpenStreetMap contributors"}).addTo(map);
+if(TOMTOM_KEY)
+  L.tileLayer("https://api.tomtom.com/map/1/tile/basic/main/{z}/{x}/{y}.png?key="+TOMTOM_KEY,{maxZoom:22,attribution:"© TomTom, © OpenStreetMap contributors"}).addTo(map);
+else if(location.protocol==="http:"||location.protocol==="https:")
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap contributors"}).addTo(map);
 else
-  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",{maxZoom:22,maxNativeZoom:19,attribution:"Tiles © Esri"}).addTo(map);
+  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:"Tiles © Esri"}).addTo(map);
 
 const VEH={moto:"🏍️ motorcycles",car:"🚗 cars",puv:"🚌 jeepneys & buses"};
 const RANK={ok:0,risk:1,block:2};
@@ -293,7 +295,7 @@ function accountTab(msg){
       (isAdmin?'<button class="go" id="aadm" style="padding:11px">🛡️ Admin panel</button>':"")+'<div id="aerr"></div><button class="nb" id="aout">Sign out</button></div>';
   } else h+='<div class="sc"><b>Saved on this device</b><div class="small">Shared reports and sign-in are switched off, so your reports stay on this phone.</div></div>';
   h+='<div class="sc"><b>Appearance</b><div class="chips" style="margin:0">'+[["auto","🌗 Auto"],["light","☀️ Light"],["dark","🌙 Dark"]].map(t=>'<button data-th="'+t[0]+'" class="'+(themePref===t[0]?"on":"")+'">'+t[1]+'</button>').join("")+'</div>'+
-    '<div class="small" style="margin-top:6px">Map style</div><div class="chips" style="margin:0">'+[["osm","🌍 OpenStreetMap"],["esri","🏙️ Esri"],TOMTOM_KEY?["tomtom","🗺️ TomTom"]:null,MAPTILER_KEY?["maptiler","🧭 MapTiler"]:null].filter(Boolean).map(t=>'<button data-ms="'+t[0]+'" class="'+(mapStyle===t[0]?"on":"")+'">'+t[1]+'</button>').join("")+'</div></div>';
+    '<div class="small" style="margin-top:6px">Map style</div><div class="chips" style="margin:0">'+[["auto","✨ Auto"],TOMTOM_KEY?["tomtom","🗺️ TomTom"]:null,MAPTILER_KEY?["maptiler","🧭 MapTiler"]:null,["esri","🏙️ Esri"],["osm","🌍 OpenStreetMap"]].filter(Boolean).map(t=>'<button data-ms="'+t[0]+'" class="'+(mapStyle===t[0]?"on":"")+'">'+t[1]+'</button>').join("")+'</div></div>';
   h+='<div class="sc"><b>Reporting</b><div class="small">'+(isAdmin?"As an admin you can send reports without waiting.":"You can send a new report every "+COOLDOWN_S+" seconds.")+' When someone marks a flooded road as cleared, it leaves the map after '+CLEAR_HIDE_S+' seconds.</div></div>';
   h+='<div class="sc"><b>🔔 Flood alerts</b><div class="small">Get a notification when someone reports a flood near you, a flooded road is detected, or heavy rain starts. Works while the app is open or running in the background.</div><button class="nb" id="altog">'+(alertsOn?"🔔 Alerts are ON (tap to turn off)":"🔕 Alerts are OFF (tap to turn on)")+'</button><div class="small">Alert distance</div><select id="akm">'+[2,5,10,20].map(k=>'<option value="'+k+'"'+(alertKm===k?" selected":"")+'>'+k+' km from me</option>').join("")+'</select><button class="nb" id="atest">Send a test alert</button><div class="small" id="pst">'+pushStatusText()+'</div><div class="small">When you turn on closed-app alerts, your approximate location (about 100 m) and a device code are saved so the server knows who is nearby. Turn alerts off to delete them.</div><div id="ares"></div></div>';
   h+='<div class="sc"><b>🔧 Check map services</b><div class="small">Tests the map, live traffic, search, routing and flood detection with your TomTom key and tells you what is blocked.</div><button class="nb" id="chk">Run check</button><div id="chkres"></div></div>';
@@ -697,40 +699,30 @@ async function ttPlaces(kind,lat,lng,rad){
   if(!res.length&&c.q) res=await run(base+"poiSearch/"+encodeURIComponent(c.q)+".json?key="+TOMTOM_KEY+common);
   return res.filter(x=>x.position).map(x=>({lat:x.position.lat,lng:x.position.lon,name:(x.poi&&x.poi.name)||POI[kind].n,k:"t"+String(x.id||(x.position.lat+","+x.position.lon)).replace(/[^A-Za-z0-9]/g,"")}));
 }
-function overpass(q){
-  return new Promise((resolve,reject)=>{
-    let done=false, fails=0; const started={}, acs=[], tms=[];
-    const finish=(ok,v)=>{ if(done) return; done=true; tms.forEach(clearTimeout); acs.forEach(a=>{ try{ a.abort(); }catch(e){} }); ok?resolve(v):reject(v); };
-    const start=i=>{
-      if(done||started[i]||i>=OVERPASS.length) return; started[i]=1;
-      const ac=new AbortController(); acs.push(ac); const tm=setTimeout(()=>ac.abort(),10000);
-      fetch(OVERPASS[i],{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"data="+encodeURIComponent(q),signal:ac.signal})
-        .then(r=>{ if(!r.ok) throw new Error("http "+r.status); return r.json(); })
-        .then(j=>{ clearTimeout(tm); if(j&&j.elements) finish(true,j.elements); else throw new Error("bad answer"); })
-        .catch(e=>{ clearTimeout(tm); if(done) return; fails++; if(fails>=OVERPASS.length) finish(false,e); else start(i+1); });
-    };
-    start(0); [1,2,3].forEach(i=>tms.push(setTimeout(()=>start(i),i*2500)));    // if a server is slow, ask the next one too; the first good answer wins
-  });
-}
-// box = {lat,lng,rad (metres), s,w,n,e}. OpenStreetMap servers first (TomTom first if you chose the TomTom map), the other as backup.
-async function fetchPlaces(kinds,box){
-  const order=(mapStyle==="tomtom"&&TOMTOM_KEY)?["tomtom","osm"]:["osm","tomtom"]; let lastErr=null;
-  for(const src of order){
+async function overpass(q){
+  let last=null;
+  for(const u of OVERPASS){
     try{
-      if(src==="tomtom"){
-        if(!TOMTOM_KEY||ttPoiBad) continue;
-        const rs=await Promise.all(kinds.map(k=>ttPlaces(k,box.lat,box.lng,box.rad).then(a=>({k:k,a:a}),()=>null)));
-        if(rs.every(x=>x===null)){ ttPoiBad=true; throw new Error("tomtom places failed"); }
-        const out=[]; rs.forEach(x=>{ if(x) x.a.forEach(p=>out.push(Object.assign({kind:x.k},p))); }); poiSource="TomTom"; return out;
-      }
-      const q="[out:json][timeout:20];("+kinds.map(k=>"nwr"+POI[k].q+"("+box.s+","+box.w+","+box.n+","+box.e+");").join("")+");out center 300;";
-      const els=await overpass(q), out=[];
-      els.forEach(el=>{ const t=el.tags||{}, kind=kindOf(t), lat=el.lat!==undefined?el.lat:(el.center&&el.center.lat), lng=el.lon!==undefined?el.lon:(el.center&&el.center.lon);
-        if(kind&&lat!=null&&lng!=null) out.push({kind:kind,lat:lat,lng:lng,name:t.name||POI[kind].n,k:el.type[0]+el.id}); });
-      poiSource="OpenStreetMap"; return out;
-    }catch(e){ lastErr=e; }
+      const ac=new AbortController(), t=setTimeout(()=>ac.abort(),12000);
+      const r=await fetch(u,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"data="+encodeURIComponent(q),signal:ac.signal}); clearTimeout(t);
+      if(!r.ok) throw new Error("http "+r.status);
+      const j=await r.json(); if(j&&j.elements) return j.elements;
+    }catch(e){ last=e; }
   }
-  throw lastErr||new Error("no places source");
+  throw last||new Error("overpass");
+}
+// box = {lat,lng,rad (metres), s,w,n,e}. Tries TomTom first, then free OpenStreetMap servers.
+async function fetchPlaces(kinds,box){
+  if(TOMTOM_KEY&&!ttPoiBad){
+    const rs=await Promise.all(kinds.map(k=>ttPlaces(k,box.lat,box.lng,box.rad).then(a=>({k:k,a:a}),()=>null)));
+    if(rs.every(x=>x===null)) ttPoiBad=true;
+    else { const out=[]; rs.forEach(x=>{ if(x) x.a.forEach(p=>out.push(Object.assign({kind:x.k},p))); }); poiSource="TomTom"; return out; }
+  }
+  const q="[out:json][timeout:20];("+kinds.map(k=>"nwr"+POI[k].q+"("+box.s+","+box.w+","+box.n+","+box.e+");").join("")+");out center 300;";
+  const els=await overpass(q), out=[];
+  els.forEach(el=>{ const t=el.tags||{}, kind=kindOf(t), lat=el.lat!==undefined?el.lat:(el.center&&el.center.lat), lng=el.lon!==undefined?el.lon:(el.center&&el.center.lon);
+    if(kind&&lat!=null&&lng!=null) out.push({kind:kind,lat:lat,lng:lng,name:t.name||POI[kind].n,k:el.type[0]+el.id}); });
+  poiSource="OpenStreetMap"; return out;
 }
 const POI={police:{e:"🚓",s:"Police",n:"Police station",q:'["amenity"="police"]',em:1},hospital:{e:"🏥",s:"Hospital",n:"Hospital",q:'["amenity"="hospital"]',em:1},
   clinic:{e:"🩺",s:"Clinics",n:"Clinic / doctor",q:'["amenity"~"^(clinic|doctors)$"]'},fire:{e:"🚒",s:"Fire",n:"Fire station",q:'["amenity"="fire_station"]',em:1},
@@ -1015,17 +1007,17 @@ async function dropSub(){
 // ---- service check (helps find out why the map or traffic does not load) ----
 async function checkServices(){
   const out=$("chkres"); if(!out) return;
+  if(!TOMTOM_KEY){ out.innerHTML='<div class="msg risk">No TomTom key is set in this app, so the backup map is used.</div>'; return; }
   out.innerHTML='<div class="small">Checking…</div>';
   const K=TOMTOM_KEY, inc="https://api.tomtom.com/traffic/services/5/incidentDetails?key="+K+"&bbox=120.95,14.45,121.05,14.55&fields="+encodeURIComponent("{incidents{type}}")+"&language=en-GB&timeValidityFilter=present";
-  const T1=[["TomTom map tiles","https://api.tomtom.com/map/1/tile/basic/main/10/856/470.png?key="+K],
+  const T=[["Map tiles","https://api.tomtom.com/map/1/tile/basic/main/10/856/470.png?key="+K],
     ["Night map tiles","https://api.tomtom.com/map/1/tile/basic/night/10/856/470.png?key="+K],
     ["Live traffic tiles","https://api.tomtom.com/traffic/map/4/tile/flow/relative/10/856/470.png?key="+K],
     ["Place search","https://api.tomtom.com/search/2/search/manila.json?key="+K+"&limit=1"],
     ["Routing","https://api.tomtom.com/routing/1/calculateRoute/14.50,121.00:14.55,121.00/json?key="+K],
     ["Nearby places (TomTom)","https://api.tomtom.com/search/2/nearbySearch/.json?key="+K+"&lat=14.5&lon=121&radius=3000&limit=1&categorySet=7321"],
     ["Flood detection (traffic incidents)",inc],
-    ];
-  const T=[["OpenStreetMap map tiles","https://tile.openstreetmap.org/10/856/470.png"],["Esri map tiles","https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/10/470/856"]].concat(K?T1:[]).concat([["Rain forecast (Open-Meteo)","https://api.open-meteo.com/v1/forecast?latitude=14.5&longitude=121&current=precipitation"]]);
+    ["Rain forecast (Open-Meteo)","https://api.open-meteo.com/v1/forecast?latitude=14.5&longitude=121&current=precipitation"]];
   const why=c=>c===0?"couldn’t connect. You may be offline, or the key doesn’t allow this website.":(c===401||c===403)?"the key isn’t allowed for this service or website. Check ‘Allowed domains’ and the enabled products for the key in your TomTom dashboard.":c===429?"free limit reached for now.":c===404?"service not found.":"error "+c+".";
   const rows=await Promise.all(T.map(async t=>{
     try{ const r=await fetch(t[1]); let m=""; if(!r.ok){ try{ m=(await r.text()).replace(/<[^>]*>/g," ").replace(/\s+/g," ").trim().slice(0,120); }catch(e){} } return [t[0],r.ok,r.status,m]; }
@@ -1059,7 +1051,7 @@ async function nearest(kind){
 let themePref="auto"; try{ themePref=localStorage.getItem("fwtheme")||"auto"; }catch(e){}
 const darkMQ=window.matchMedia?window.matchMedia("(prefers-color-scheme: dark)"):null;
 const isDark=()=>themePref==="dark"||(themePref==="auto"&&!!darkMQ&&darkMQ.matches);
-let mapStyle="osm"; try{ mapStyle=localStorage.getItem("fwmap")||"osm"; if(mapStyle==="auto") mapStyle="osm"; }catch(e){}
+let mapStyle="auto"; try{ mapStyle=localStorage.getItem("fwmap")||"auto"; }catch(e){}
 let tileOk=0, tileErr=0, badStyle={}, curTileUrl="", curAttr="";
 const STYLES={
   tomtom:dk=>({url:"https://api.tomtom.com/map/1/tile/basic/"+(dk?"night":"main")+"/{z}/{x}/{y}.png?key="+TOMTOM_KEY,attr:"© TomTom, © OpenStreetMap contributors",nz:22,filter:false}),
@@ -1068,7 +1060,7 @@ const STYLES={
   osm:dk=>({url:"https://tile.openstreetmap.org/{z}/{x}/{y}.png",attr:"© OpenStreetMap contributors",nz:19,filter:dk})
 };
 const styleOK=k=>!badStyle[k]&&(k==="esri"||k==="osm"||(k==="tomtom"&&!!TOMTOM_KEY)||(k==="maptiler"&&!!MAPTILER_KEY));
-function effectiveStyle(){ return [mapStyle,"osm","esri","maptiler","tomtom"].find(styleOK)||"esri"; }
+function effectiveStyle(){ return (mapStyle==="auto"?["tomtom","maptiler","esri"]:[mapStyle,"tomtom","maptiler","esri"]).find(styleOK)||"esri"; }
 function svcMsg(t){ const e=$("svc"); if(e) e.innerHTML=t?'<div class="msg risk">'+t+'</div>':""; }
 function syncTiles(){
   const dk=isDark(), cfg=STYLES[effectiveStyle()](dk);
@@ -1099,9 +1091,9 @@ if(baseLayer){
   baseLayer.on("tileload",()=>{ tileOk++; });
   baseLayer.on("tileerror",()=>{
     const st=effectiveStyle();
-    if((st==="osm"||st==="tomtom"||st==="maptiler")&&tileOk===0&&++tileErr>=3){
+    if((st==="tomtom"||st==="maptiler")&&tileOk===0&&++tileErr>=3){
       badStyle[st]=true;
-      svcMsg("⚠️ "+({osm:"OpenStreetMap",tomtom:"TomTom",maptiler:"MapTiler"})[st]+" map tiles aren’t loading, so a backup map is shown. Open ⚙️ Settings → Account → 🔧 Check map services to see why.");
+      svcMsg("⚠️ "+(st==="tomtom"?"TomTom":"MapTiler")+" map tiles aren’t loading, so a backup map is shown. Open ⚙️ Settings → Account → 🔧 Check map services to see why.");
       syncTiles();
     }
   });
