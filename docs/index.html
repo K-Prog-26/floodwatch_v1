@@ -45,6 +45,14 @@ button{font:inherit;cursor:pointer;color:var(--ink)}
 .me b{display:none;position:absolute;left:6px;top:-9px;border:7px solid transparent;border-bottom:13px solid #2563eb;filter:drop-shadow(0 0 2px #fff)}.navmode .me b{display:block}
 .navb{position:absolute;z-index:1000;top:calc(10px + max(env(safe-area-inset-top,0px),var(--safe-area-inset-top,0px)));left:10px;right:10px;max-width:470px;background:#16202e;color:#fff;border-radius:16px;padding:12px;box-shadow:0 4px 18px rgba(0,0,0,.35)}
 .arow{border-top:1px solid var(--line);padding:8px 0;display:grid;gap:6px;font-size:.85rem}.arow .nb{padding:6px 9px;font-size:.78rem}
+#acm{position:fixed;inset:0;z-index:2000;background:var(--bg);overflow:auto}
+.sp{max-width:540px;margin:0 auto;padding:0 14px 40px}
+.sph{display:flex;align-items:center;gap:10px;padding:12px 0;padding-top:max(12px,max(env(safe-area-inset-top,0px),var(--safe-area-inset-top,0px)));position:sticky;top:0;background:var(--bg);z-index:2}
+.sc{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin:10px 0;display:grid;gap:8px}
+.stabs{display:flex;gap:6px;margin-top:4px}.stabs button{flex:1;padding:10px 4px;border:2px solid var(--line);background:var(--field);border-radius:12px;font-size:.82rem}.stabs button.on{border-color:#2563eb;background:var(--onbg)}
+.stat{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.stat div{background:var(--field);border-radius:12px;padding:10px;text-align:center;font-size:.8rem}.stat b{display:block;font-size:1.4rem}
+#sug{display:none;margin-top:6px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.sg{display:block;width:100%;text-align:left;padding:9px 11px;border:0;border-bottom:1px solid var(--line);background:var(--card);font-size:.85rem;line-height:1.35}.sg:last-child{border-bottom:0}
 .mc{background:var(--card);border-radius:18px;padding:16px;width:100%;max-width:380px;display:grid;gap:8px;max-height:90vh;overflow:auto}
 .call{display:block;padding:13px;border-radius:12px;background:#e04545;color:#fff;text-align:center;font-weight:600;text-decoration:none}
 .nb{padding:12px;border:2px solid var(--line);background:var(--field);border-radius:12px;font-size:.92rem}
@@ -62,10 +70,11 @@ button{font:inherit;cursor:pointer;color:var(--ink)}
     <input id="q" placeholder="Where to? (e.g. SM Mall of Asia)" aria-label="Destination">
     <button class="go" id="go">Go</button>
     <button class="ic" id="loc" title="My location" aria-label="Go to my location">📍</button>
-    <button class="ic" id="acc" title="Account" aria-label="Account" style="display:none">👤</button>
+    <button class="ic" id="acc" title="Settings" aria-label="Settings">⚙️</button>
     <button class="ic" id="sos" title="Emergency help" aria-label="Emergency help" style="border-color:#e04545">🆘</button>
     <button class="ic" id="clr" title="Clear route" aria-label="Clear route" style="display:none">✕</button>
   </div>
+  <div id="sug"></div>
   <div class="chips"><button data-v="moto">🏍️ Motorcycle</button><button data-v="car">🚗 Car</button><button data-v="puv">🚌 Jeepney / Bus</button></div>
   <label class="tl"><input type="checkbox" id="toll"> Avoid toll roads</label>
   <div class="small" style="margin-top:8px">Show on map:</div><div class="pois" id="pois" style="margin-top:4px"></div><div class="small" id="pnote"></div>
@@ -80,7 +89,7 @@ button{font:inherit;cursor:pointer;color:var(--ink)}
   <div class="row" style="margin-top:8px"><button class="nb" id="navm" style="flex:1">🔊 Voice on</button><button class="nb" id="navr" style="flex:1">🌊 Report</button><button class="nb" id="navc" style="display:none">🎯</button><button class="nb" id="navx" style="flex:1;color:#e04545">End</button></div>
 </div>
 <div class="sheet" id="sheet"></div>
-<div id="acm" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.45);align-items:center;justify-content:center;padding:16px"><div class="mc" id="acb"></div></div>
+<div id="acm" style="display:none"><div class="sp"><div class="sph"><button class="nb" id="acx" style="padding:8px 14px">← Back</button><b style="font-size:1.15rem">⚙️ Settings</b></div><div id="acb"></div></div></div>
 <div id="adm" style="display:none;position:fixed;inset:0;z-index:2050;background:rgba(0,0,0,.5);align-items:center;justify-content:center;padding:16px">
   <div class="mc" style="max-width:480px"><b style="font-size:1.05rem">🛡️ Admin – reports (last 24 h)</b>
     <div class="small">Flagged reports are listed first. Reports with 3 or more flags are hidden from the public map until you review them.</div>
@@ -123,7 +132,7 @@ const TOMTOM_KEY = "bT1Tg9UK2DxHbFQ4L89RYp9vL8tcy2Ze";
 const TT_MODE = {moto:"motorcycle", car:"car", puv:"bus"};
 let engine = "";
 const PROFILE = {moto:"driving-car", car:"driving-car", puv:"driving-car"}; // OpenRouteService has no motorcycle profile
-const EXPIRE_HOURS = 3, NEAR_M = 80, COOLDOWN_S = 60;
+const EXPIRE_HOURS = 3, NEAR_M = 80, COOLDOWN_S = 20, CLEAR_HIDE_S = 60;
 const COL = {ok:"#1fa463", risk:"#f0a020", block:"#e04545"};
 const LBL = {ok:"Passable", risk:"Risky", block:"Not passable"};
 const DEPTH = ["Ankle-deep","Knee-deep","Waist-deep+"];
@@ -170,9 +179,14 @@ const disputed=r=>!r.av&&flagN(r)>=3&&(r.v||0)<2;   // hidden until an admin rev
 function current(){
   const all=live().filter(r=>!disputed(r)).sort((a,b)=>b.t-a.t), out=[];
   all.forEach(r=>{
+    r.cleared=false;
     if(out.some(o=>hav([o.lat,o.lng],[r.lat,r.lng])<NEAR_M)) return;
-    // a "passable/cleared" report only replaces a flood report if it is at least as well verified
-    if(r.s==="ok" && all.some(x=>x.s!=="ok" && trust(x)>trust(r) && hav([x.lat,x.lng],[r.lat,r.lng])<NEAR_M)) return;
+    if(r.s==="ok"){
+      // a "passable/cleared" report only replaces a flood report if it is at least as well verified
+      if(all.some(x=>x.s!=="ok" && trust(x)>trust(r) && hav([x.lat,x.lng],[r.lat,r.lng])<NEAR_M)) return;
+      // a "cleared" report (it replaced an older flood report) is shown for CLEAR_HIDE_S seconds, then leaves the map
+      r.cleared=all.some(x=>x.s!=="ok" && x.t<r.t && hav([x.lat,x.lng],[r.lat,r.lng])<NEAR_M);
+    }
     out.push(r);
   });
   return out;
@@ -182,7 +196,7 @@ const ago = t => { const m=Math.round((Date.now()-t)/60000); return m<1?"just no
 // ---- draw reports ----
 function render(){
   layer.clearLayers();
-  current().forEach(r => {
+  current().filter(r=>!(r.cleared&&Date.now()-r.t>CLEAR_HIDE_S*1000)).forEach(r => {
     L.circle([r.lat,r.lng],{radius:NEAR_M*0.7,color:COL[st(r)],fillColor:COL[st(r)],fillOpacity:.35,weight:(r.v===2?4:2),dashArray:(r.v>=1?null:"5 5")})
       .bindPopup(`<b>${LBL[st(r)]}</b> for ${VEH[vehicle]}<br>${DEPTH[r.d]} · ${ago(r.t)}<br>${badge(r)}${r.ph&&r.id?`<div class="pv"><button onclick="showPhoto('${r.id}')">📷 View photo</button></div>`:""}
         <div class="pv"><button onclick="vote(${r.t},'${r.s}')">👍 Still true</button><button onclick="vote(${r.t},'ok')">✅ It’s cleared</button>${r.id?`<button onclick="flagReport('${r.id}')">🚩 Flag</button>`:""}</div>`).addTo(layer);
@@ -192,7 +206,7 @@ window.vote = async (id,s) => {
   const o = reports.find(r=>r.t===id); if(!o||!cool()||!gate()) return;
   map.closePopup(); addReport(await makeReport(o.lat,o.lng,s,s==="ok"?0:o.d,null));
 };
-const cool = () => { const w = COOLDOWN_S-(Date.now()-lastSent)/1000; if(w>0){ say(`Please wait ${Math.ceil(w)}s before sending another report.`,"risk"); return false; } return true; };
+const cool = () => { if(isAdmin) return true; const w = COOLDOWN_S-(Date.now()-lastSent)/1000; if(w>0){ say(`Please wait ${Math.ceil(w)}s before sending another report.`,"risk"); return false; } return true; };
 async function addReport(r){
   reports.push(r); render();
   if(FB_ON){
@@ -224,30 +238,99 @@ function gate(){
   return true;
 }
 function authErr(e){ const m={"auth/invalid-credential":"Wrong email or password.","auth/wrong-password":"Wrong email or password.","auth/user-not-found":"No account with that email.","auth/email-already-in-use":"That email already has an account. Try Sign in.","auth/weak-password":"Password needs at least 6 characters.","auth/invalid-email":"That email doesn’t look right.","auth/popup-closed-by-user":"Sign-in was cancelled.","auth/unauthorized-domain":"This website address isn’t authorized in Firebase yet.","auth/too-many-requests":"Too many tries. Please wait a bit."}; return m[e&&e.code]||((e&&e.message)||"Something went wrong."); }
-function openAuth(msg){ $("acm").style.display="flex"; renderAccount(msg); }
+// ---- settings page: account, activity, history ----
+let setTab="account", histList=[];
+function openSettings(tab,msg){ setTab=tab||"account"; $("acm").style.display="block"; $("acm").scrollTop=0; renderAccount(msg); }
+function closeSettings(){ $("acm").style.display="none"; }
+function openAuth(msg){ openSettings("account",msg); }
+const myLive=()=>FB_ON?(user?reports.filter(r=>r.uid===user.uid):[]):reports.slice();
+const fmtT=t=>new Date(t).toLocaleString([],{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"});
+function repRow(r,when){
+  return '<div class="arow"><div><b style="color:'+COL[r.s]+'">'+LBL[r.s]+'</b> · '+DEPTH[r.d]+' · '+when+'<br><span class="small">'+badge(r)+'</span></div><div class="row" style="flex-wrap:wrap"><button class="nb" data-a="go" data-i="'+r.id+'">📍 Show</button>'+(r.ph?'<button class="nb" data-a="ph" data-i="'+r.id+'">📷 Photo</button>':"")+'<button class="nb" data-a="del" data-i="'+r.id+'">🗑 Delete</button></div></div>';
+}
+function bindRows(root,list){ root.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>myAct(b.dataset.a,b.dataset.i,list)); }
+async function myAct(a,id,list){
+  const r=(list||[]).find(x=>x.id===id)||reports.find(x=>x.id===id); if(!r) return;
+  if(a==="go"){ closeSettings(); map.setView([r.lat,r.lng],17); }
+  else if(a==="ph") showPhoto(id);
+  else if(a==="del"){
+    if(!confirm("Delete this report?")) return;
+    if(FB_ON){ try{ await fbdb.ref("reports/"+id).remove(); fbdb.ref("photos/"+id).remove().catch(()=>{}); }catch(e){ alert("Couldn’t delete: "+((e&&e.message)||e)); return; } }
+    else { saveLocal(); try{ localStorage.removeItem("fwph:"+id); }catch(e){} }
+    reports=reports.filter(x=>x.id!==id); if(!FB_ON) saveLocal(); histList=histList.filter(x=>x.id!==id); render(); renderAccount();
+  }
+}
 function renderAccount(msg){
-  if(!FB_ON) return; const box=$("acb"), err=t=>{ $("aerr").innerHTML='<div class="msg risk">'+esc(t)+'</div>'; };
-  if(!user){
-    box.innerHTML='<b>Sign in to report</b><div class="small">Anyone can view the map. Reports need a verified account to stop fake news.</div>'+(msg?'<div class="msg risk">'+esc(msg)+'</div>':"")+
-      (IS_APP?'<div class="small">Google sign-in works on the website. In the app, use email and password.</div>':'<button class="nb" id="agoog">Continue with Google</button>')+'<input id="aem" type="email" placeholder="Email" autocomplete="email"><input id="apw" type="password" placeholder="Password (6+ characters)" autocomplete="current-password">'+
-      '<div class="row"><button class="go" id="ain" style="flex:1;padding:11px">Sign in</button><button class="nb" id="aup" style="flex:1">Create account</button></div><div id="aerr"></div><button class="nb" id="acx">Close</button>';
-    if($("agoog")) $("agoog").onclick=async()=>{ try{ await fbauth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }catch(e){ err(authErr(e)); } };
-    $("ain").onclick=async()=>{ try{ await fbauth.signInWithEmailAndPassword($("aem").value.trim(),$("apw").value); }catch(e){ err(authErr(e)); } };
-    $("aup").onclick=async()=>{ try{ const c=await fbauth.createUserWithEmailAndPassword($("aem").value.trim(),$("apw").value); await c.user.sendEmailVerification(); }catch(e){ err(authErr(e)); } };
-  } else {
-    box.innerHTML='<b>👤 '+esc(user.displayName||user.email||"Signed in")+'</b><div class="small">'+esc(user.email||"")+'</div>'+
+  const box=$("acb"); if(!box) return;
+  const tabs=[["account","👤 Account"],["activity","📊 Activity"],["history","🕘 History"]];
+  box.innerHTML='<div class="stabs">'+tabs.map(t=>'<button data-t="'+t[0]+'" class="'+(setTab===t[0]?"on":"")+'">'+t[1]+'</button>').join("")+'</div><div id="sbody"></div>';
+  box.querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{ setTab=b.dataset.t; renderAccount(); });
+  if(setTab==="activity") activityTab(); else if(setTab==="history") historyTab(); else accountTab(msg);
+}
+function accountTab(msg){
+  const b=$("sbody"), err=t=>{ const e=$("aerr"); if(e) e.innerHTML='<div class="msg risk">'+esc(t)+'</div>'; }; let h="";
+  if(FB_ON&&!user){
+    h+='<div class="sc"><b>Sign in to report</b><div class="small">Anyone can view the map. Reports need a verified account to stop fake news.</div>'+(msg?'<div class="msg risk">'+esc(msg)+'</div>':"")+
+      (IS_APP?'<div class="small">Google sign-in works on the website. In the app, use email and password.</div>':'<button class="nb" id="agoog">Continue with Google</button>')+
+      '<input id="aem" type="email" placeholder="Email" autocomplete="email"><input id="apw" type="password" placeholder="Password (6+ characters)" autocomplete="current-password">'+
+      '<div class="row"><button class="go" id="ain" style="flex:1;padding:11px">Sign in</button><button class="nb" id="aup" style="flex:1">Create account</button></div><div id="aerr"></div></div>';
+  } else if(FB_ON){
+    const m=user.metadata||{};
+    h+='<div class="sc"><b style="font-size:1.05rem">👤 '+esc(user.displayName||user.email||"Signed in")+'</b><div class="small">'+esc(user.email||"")+'</div>'+
+      '<div class="small">Role: <b>'+(isAdmin?"🛡️ Admin":"Member")+'</b> · Joined: '+esc(m.creationTime?new Date(m.creationTime).toLocaleDateString():"–")+'</div>'+
       (user.emailVerified?'<div class="msg ok">✅ Email verified. You can send reports.</div>':'<div class="msg risk">Please verify your email. We sent you a link.<div class="row" style="margin-top:6px"><button class="nb" id="averi" style="flex:1">I’ve verified</button><button class="nb" id="aresend" style="flex:1">Resend</button></div></div>')+
       (banned?'<div class="msg block">This account is restricted.</div>':"")+
-      '<div class="small">Your user ID (needed once to make an admin):<br><code id="auid" style="word-break:break-all">'+esc(user.uid)+'</code></div><button class="nb" id="acopy">Copy ID</button>'+
-      (isAdmin?'<button class="go" id="aadm" style="padding:11px">🛡️ Admin panel</button>':"")+'<div id="aerr"></div><button class="nb" id="aout">Sign out</button><button class="nb" id="acx">Close</button>';
-    if($("averi")) $("averi").onclick=async()=>{ try{ await user.reload(); await user.getIdToken(true); user=fbauth.currentUser; renderAccount(); }catch(e){ err(authErr(e)); } };
-    if($("aresend")) $("aresend").onclick=async()=>{ try{ await user.sendEmailVerification(); err("Verification email sent. Check your inbox and spam folder."); }catch(e){ err(authErr(e)); } };
-    $("acopy").onclick=()=>{ try{ navigator.clipboard.writeText(user.uid); $("acopy").textContent="Copied ✓"; }catch(e){} };
-    if($("aadm")) $("aadm").onclick=()=>{ $("acm").style.display="none"; $("adm").style.display="flex"; renderAdmin(); };
-    $("aout").onclick=()=>fbauth.signOut();
-  }
-  $("acx").onclick=()=>{ $("acm").style.display="none"; };
+      '<div class="small">Your user ID:<br><code style="word-break:break-all">'+esc(user.uid)+'</code></div><button class="nb" id="acopy">Copy ID</button>'+
+      (isAdmin?'<button class="go" id="aadm" style="padding:11px">🛡️ Admin panel</button>':"")+'<div id="aerr"></div><button class="nb" id="aout">Sign out</button></div>';
+  } else h+='<div class="sc"><b>Saved on this device</b><div class="small">Shared reports and sign-in are switched off, so your reports stay on this phone.</div></div>';
+  h+='<div class="sc"><b>Appearance</b><div class="chips" style="margin:0">'+[["auto","🌗 Auto"],["light","☀️ Light"],["dark","🌙 Dark"]].map(t=>'<button data-th="'+t[0]+'" class="'+(themePref===t[0]?"on":"")+'">'+t[1]+'</button>').join("")+'</div></div>';
+  h+='<div class="sc"><b>Reporting</b><div class="small">'+(isAdmin?"As an admin you can send reports without waiting.":"You can send a new report every "+COOLDOWN_S+" seconds.")+' When someone marks a flooded road as cleared, it leaves the map after '+CLEAR_HIDE_S+' seconds.</div></div>';
+  h+='<div class="sc"><b>Navigation voice</b><div class="small">Spoken turn-by-turn directions. Make sure your media volume is up.</div><button class="nb" id="vtest">🔊 Test voice</button><div id="vres"></div></div>';
+  b.innerHTML=h;
+  $("vtest").onclick=async()=>{ $("vres").innerHTML='<div class="small">Speaking…</div>'; const ok=await speakText("Voice guidance is working."); $("vres").innerHTML=ok?'<div class="msg ok">✅ If you heard the voice, you are all set.</div>':'<div class="msg risk">Voice isn’t available on this device. Check that a text-to-speech engine (such as Google Text-to-speech) is installed, then try again.</div>'; };
+  b.querySelectorAll("[data-th]").forEach(x=>x.onclick=()=>{ themePref=x.dataset.th; try{ localStorage.setItem("fwtheme",themePref); }catch(e){} applyTheme(); renderAccount(); });
+  if($("agoog")) $("agoog").onclick=async()=>{ try{ await fbauth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }catch(e){ err(authErr(e)); } };
+  if($("ain")) $("ain").onclick=async()=>{ try{ await fbauth.signInWithEmailAndPassword($("aem").value.trim(),$("apw").value); }catch(e){ err(authErr(e)); } };
+  if($("aup")) $("aup").onclick=async()=>{ try{ const c=await fbauth.createUserWithEmailAndPassword($("aem").value.trim(),$("apw").value); await c.user.sendEmailVerification(); }catch(e){ err(authErr(e)); } };
+  if($("averi")) $("averi").onclick=async()=>{ try{ await user.reload(); await user.getIdToken(true); user=fbauth.currentUser; renderAccount(); }catch(e){ err(authErr(e)); } };
+  if($("aresend")) $("aresend").onclick=async()=>{ try{ await user.sendEmailVerification(); err("Verification email sent. Check your inbox and spam folder."); }catch(e){ err(authErr(e)); } };
+  if($("acopy")) $("acopy").onclick=()=>{ try{ navigator.clipboard.writeText(user.uid); $("acopy").textContent="Copied ✓"; }catch(e){} };
+  if($("aadm")) $("aadm").onclick=()=>{ closeSettings(); $("adm").style.display="flex"; renderAdmin(); };
+  if($("aout")) $("aout").onclick=()=>fbauth.signOut();
 }
+function activityTab(){
+  const b=$("sbody");
+  if(FB_ON&&!user){ b.innerHTML='<div class="sc"><b>Sign in to see your activity</b><div class="small">Your reports, flags and trust level appear here.</div><button class="go" id="gosign" style="padding:11px">Go to sign in</button></div>'; $("gosign").onclick=()=>{ setTab="account"; renderAccount(); }; return; }
+  const mine=myLive().sort((a,c)=>c.t-a.t), pv=mine.filter(r=>r.v===2).length, ol=mine.filter(r=>r.v===1).length;
+  let fl=0; if(FB_ON&&user) Object.keys(flags).forEach(k=>{ if(flags[k]&&flags[k][user.uid]) fl++; });
+  b.innerHTML='<div class="sc"><b>Last 24 hours</b><div class="stat"><div><b>'+mine.length+'</b>Reports sent</div><div><b>'+pv+'</b>📸 Photo-verified</div><div><b>'+ol+'</b>📍 On location</div><div><b>'+fl+'</b>🚩 Flags sent</div></div>'+(mine.length?'<div class="small">Last report: '+ago(mine[0].t)+'</div>':"")+'</div>'+
+    '<div class="sc"><b>Your reports</b>'+(mine.length?mine.map(r=>repRow(r,ago(r.t))).join(""):'<div class="small">No reports in the last 24 hours.</div>')+'</div>';
+  bindRows(b,mine);
+}
+async function historyTab(){
+  const b=$("sbody");
+  b.innerHTML='<div class="sc"><b>Your past reports</b><div id="hrep" class="small">Loading…</div></div><div class="sc"><b>Recent searches</b><div id="hser"></div></div>';
+  renderSearchHist();
+  let list=[];
+  if(FB_ON){
+    if(!user){ $("hrep").textContent="Sign in to see your report history."; return; }
+    try{ const o=(await fbdb.ref("reports").orderByChild("uid").equalTo(user.uid).limitToLast(50).get()).val()||{};
+      list=Object.keys(o).map(k=>Object.assign({id:k},o[k])).filter(valid); }
+    catch(e){ if($("hrep")) $("hrep").textContent="Couldn’t load your history right now."; return; }
+  } else list=reports.slice();
+  list.sort((x,y)=>y.t-x.t); histList=list;
+  const el=$("hrep"); if(!el) return;
+  el.className=""; el.innerHTML=list.length?list.map(r=>repRow(r,fmtT(r.t))).join("")+'<div class="small" style="margin-top:6px">Showing up to your last 50 reports.</div>':'<div class="small">No reports yet.</div>';
+  bindRows(el,list);
+}
+function renderSearchHist(){
+  const el=$("hser"); if(!el) return;
+  el.innerHTML=searchHist.length?searchHist.map((h,i)=>'<div class="arow"><div><b>🕘 '+esc(h.name)+'</b><br><span class="small">'+fmtT(h.t)+'</span></div><div class="row"><button class="nb" data-h="'+i+'">🧭 Go</button></div></div>').join("")+'<button class="nb" id="hclr" style="margin-top:6px">Clear searches</button>':'<div class="small">No searches yet.</div>';
+  el.querySelectorAll("[data-h]").forEach(x=>x.onclick=()=>{ const h=searchHist[+x.dataset.h]; if(!h) return; closeSettings(); $("q").value=h.name; goDest([h.lat,h.lng],h.name); });
+  if($("hclr")) $("hclr").onclick=()=>{ searchHist=[]; try{ localStorage.removeItem("fwhist"); }catch(e){} renderSearchHist(); };
+}
+$("acc").onclick=()=>openSettings("account");
+$("acx").onclick=closeSettings;
 function renderAdmin(){
   const rows=reports.filter(r=>r.id).sort((a,b)=>flagN(b)-flagN(a)||b.t-a.t).slice(0,60);
   $("adl").innerHTML=rows.length?rows.map(r=>'<div class="arow"><div><b style="color:'+COL[r.s]+'">'+LBL[r.s]+'</b> · '+DEPTH[r.d]+' · '+ago(r.t)+(disputed(r)?' · <b>hidden</b>':'')+'<br><span class="small">'+badge(r)+' · by '+esc(String(r.uid||"?").slice(0,6))+'</span></div><div class="row" style="flex-wrap:wrap">'+
@@ -278,8 +361,6 @@ window.flagReport=async id=>{
 function initFirebase(){
   if(!FB_ON) return;
   firebase.initializeApp(FB_CONFIG); fbauth=firebase.auth(); fbdb=firebase.database();
-  $("acc").style.display=""; $("acc").onclick=()=>openAuth();
-  $("acm").addEventListener("click",e=>{ if(e.target===$("acm")) $("acm").style.display="none"; });
   $("adx").onclick=()=>{ $("adm").style.display="none"; };
   fbauth.onAuthStateChanged(async u=>{
     user=u; isAdmin=false; banned=false; renderAccount();
@@ -287,7 +368,7 @@ function initFirebase(){
   });
   fbdb.ref("reports").orderByChild("t").startAt(Date.now()-24*3600e3).on("value",snap=>{
     const o=snap.val()||{}; reports=Object.keys(o).map(k=>Object.assign({id:k},o[k])).filter(valid);
-    render(); if(nav) navRecheck(); if($("adm").style.display==="flex") renderAdmin(); },()=>{});
+    render(); if(nav) navRecheck(); if($("adm").style.display==="flex") renderAdmin(); if($("acm").style.display==="block"&&setTab==="activity") renderAccount(); },()=>{});
   fbdb.ref("flags").on("value",snap=>{ flags=snap.val()||{}; render(); if($("adm").style.display==="flex") renderAdmin(); },()=>{});
 }
 
@@ -403,7 +484,7 @@ function reset(){ if(pendMarker){ map.removeLayer(pendMarker); pendMarker=null; 
 // ---- search + routing ----
 async function search(){
   const q=$("q").value.trim(); if(!q) return;
-  say("Searching…","info");
+  hideSug(); say("Searching…","info");
   try{
     const c=map.getCenter(); let pos=null;
     if(TOMTOM_KEY){
@@ -415,11 +496,39 @@ async function search(){
       if(j.length) pos=[+j[0].lat,+j[0].lon];
     }
     if(!pos){ say("Couldn’t find that place. Try adding the city name.","risk"); return; }
-    dest=pos;
+    dest=pos; addHist(q,pos);
     if(destMarker) map.removeLayer(destMarker);
     destMarker=L.marker(dest).addTo(map); routeTo(dest);
   }catch(e){ say("Search failed. Check your connection, or host this page on a website (see notes).","risk"); }
 }
+// ---- search suggestions (TomTom) + recent searches ----
+let searchHist=[]; try{ searchHist=JSON.parse(localStorage.getItem("fwhist")||"[]").filter(h=>h&&h.name&&isFinite(h.lat)&&isFinite(h.lng)); }catch(e){}
+function addHist(name,pos){
+  name=String(name||"").trim(); if(!name) return;
+  searchHist=searchHist.filter(h=>h.name.toLowerCase()!==name.toLowerCase()); searchHist.unshift({name:name,lat:pos[0],lng:pos[1],t:Date.now()}); searchHist=searchHist.slice(0,15);
+  try{ localStorage.setItem("fwhist",JSON.stringify(searchHist)); }catch(e){}
+}
+function goDest(pos,name){ dest=pos; addHist(name,pos); if(destMarker) map.removeLayer(destMarker); destMarker=L.marker(dest).addTo(map); routeTo(dest); }
+let sugItems=[], sugTimer=null, sugSeq=0;
+function hideSug(){ $("sug").style.display="none"; $("sug").innerHTML=""; sugItems=[]; }
+function showSug(items,recent){
+  sugItems=items; if(!items.length){ hideSug(); return; }
+  $("sug").innerHTML=items.map((it,i)=>'<button class="sg" data-i="'+i+'"><b>'+(recent?"🕘 ":"📍 ")+esc(it.name)+'</b>'+(it.sub?'<br><span class="small">'+esc(it.sub)+'</span>':"")+'</button>').join("");
+  $("sug").style.display="block";
+  $("sug").querySelectorAll(".sg").forEach(b=>b.onclick=()=>{ const it=sugItems[+b.dataset.i]; $("q").value=it.name; hideSug(); goDest([it.lat,it.lng],it.name); });
+}
+async function suggest(q){
+  const seq=++sugSeq, c=map.getCenter();
+  try{
+    const j=await (await fetch("https://api.tomtom.com/search/2/search/"+encodeURIComponent(q)+".json?key="+TOMTOM_KEY+"&typeahead=true&limit=5&countrySet=PH&lat="+c.lat+"&lon="+c.lng)).json();
+    if(seq!==sugSeq) return;
+    showSug((j.results||[]).filter(r=>r.position).map(r=>{ const a=r.address||{};
+      return {name:(r.poi&&r.poi.name)||a.streetName||a.municipality||a.freeformAddress||q, sub:a.freeformAddress||"", lat:r.position.lat, lng:r.position.lon}; }),false);
+  }catch(e){ hideSug(); }
+}
+$("q").addEventListener("input",()=>{ clearTimeout(sugTimer); const q=$("q").value.trim(); if(q.length<3||!TOMTOM_KEY){ hideSug(); return; } sugTimer=setTimeout(()=>suggest(q),350); });
+$("q").addEventListener("focus",()=>{ if(!$("q").value.trim()) showSug(searchHist.slice(0,5).map(h=>({name:h.name,sub:"",lat:h.lat,lng:h.lng})),true); });
+document.addEventListener("click",e=>{ if(!e.target.closest(".top")) hideSug(); });
 $("go").onclick = search; $("q").addEventListener("keydown",e=>{ if(e.key==="Enter") search(); });
 $("clr").onclick = () => { dest=null; routeLayer.clearLayers(); if(destMarker){ map.removeLayer(destMarker); destMarker=null; } $("res").innerHTML=""; $("clr").style.display="none"; };
 
@@ -610,7 +719,19 @@ function startSim(c){
 map.on("dragstart",()=>{ if(nav&&!nav.done){ nav.follow=false; $("navc").style.display=""; } });
 const arrow=t=>/u-turn/i.test(t)?"↩️":/arriv/i.test(t)?"🏁":/roundabout/i.test(t)?"🔄":/slight left|keep left|bear left/i.test(t)?"↖️":/slight right|keep right|bear right/i.test(t)?"↗️":/left/i.test(t)?"⬅️":/right/i.test(t)?"➡️":"⬆️";
 const fmtD=m=>m>=1000?(m/1000).toFixed(1)+" km":(Math.round(m/10)*10)+" m";
-function speak(t){ if(!nav||nav.mute||!window.speechSynthesis) return; try{ speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(t)); }catch(e){} }
+// Voice: the Android app uses the phone's own text-to-speech through a plugin; the website uses the browser's voice
+let ttsPlugin=null;
+if(IS_APP){ try{ const C=window.Capacitor; ttsPlugin=(C.Plugins&&C.Plugins.TextToSpeech)||(C.registerPlugin?C.registerPlugin("TextToSpeech"):null); }catch(e){} }
+async function speakText(t){
+  if(ttsPlugin){ try{ await ttsPlugin.speak({text:t,lang:"en-US",rate:1.0,pitch:1.0,volume:1.0,category:"playback"}); return true; }catch(e){} }
+  if(window.speechSynthesis&&typeof SpeechSynthesisUtterance!=="undefined"){ try{ speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(t)); return true; }catch(e){} }
+  return false;
+}
+function speak(t){ if(!nav||nav.mute) return; speakText(t); }
+function stopSpeak(){
+  if(ttsPlugin){ try{ const r=ttsPlugin.stop(); if(r&&r.catch) r.catch(()=>{}); }catch(e){} }
+  try{ if(window.speechSynthesis) speechSynthesis.cancel(); }catch(e){}
+}
 function navAlert(t,c){ $("nava").innerHTML='<div class="msg '+c+'" style="color:var(--ink)">'+t+'</div>'; setTimeout(()=>{ $("nava").innerHTML=""; },9000); }
 async function startNav(c,fromSim){
   if(!me){ say("Turn on location to start navigation.","risk"); return; }
@@ -654,13 +775,13 @@ function navRecheck(){
 }
 function reroute(msg){ nav.lastRe=Date.now(); nav.off=0; speak(msg); navAlert("🔄 "+msg,"risk"); routeTo(dest,true); }
 function endNav(){
-  if(!nav) return; nav=null; try{ speechSynthesis.cancel(); }catch(e){}
+  if(!nav) return; nav=null; stopSpeak();
   if(wake){ try{ wake.release(); }catch(e){} wake=null; }
   $("nav").style.display="none"; document.querySelector(".top").style.display=""; $("map").classList.remove("navmode"); endSim(); routeLayer.clearLayers();
 }
 $("navx").onclick=endNav;
 $("navc").onclick=()=>{ if(!nav) return; nav.follow=true; $("navc").style.display="none"; if(me) map.panTo(me,{animate:true}); };
-$("navm").onclick=()=>{ if(!nav) return; nav.mute=!nav.mute; $("navm").textContent=nav.mute?"🔇 Voice off":"🔊 Voice on"; if(nav.mute){ try{ speechSynthesis.cancel(); }catch(e){} } };
+$("navm").onclick=()=>{ if(!nav) return; nav.mute=!nav.mute; $("navm").textContent=nav.mute?"🔇 Voice off":"🔊 Voice on"; if(nav.mute){ stopSpeak(); } };
 $("navr").onclick=()=>{ if(!me) return; pending={lat:me[0],lng:me[1]}; if(pendMarker) map.removeLayer(pendMarker); pendMarker=L.marker(pending).addTo(map); sheet(); };
 
 // ---- emergency help ----
