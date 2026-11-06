@@ -61,6 +61,9 @@ select{padding:9px 10px;border:1px solid var(--line);border-radius:10px;backgrou
 .nb{padding:12px;border:2px solid var(--line);background:var(--field);border-radius:12px;font-size:.92rem}
 .pois{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.pois button{padding:5px 9px;border:1px solid var(--line);background:var(--field);border-radius:16px;font-size:.76rem}.pois button.on{border-color:#2563eb;background:var(--onbg)}
 .poi span{display:flex;width:30px;height:30px;align-items:center;justify-content:center;background:var(--card);border:2px solid var(--mute);border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,.3);font-size:16px}.poi span.em{border-color:#e04545}
+.pv a,a.nb{display:block;text-decoration:none;text-align:center;color:var(--ink)}
+a.nb{display:inline-block}
+.pv a{flex:1;padding:7px 4px;border:1px solid var(--line);background:var(--field);border-radius:10px;font-size:.78rem}
 .pv{display:flex;gap:6px;margin-top:8px}.pv button{flex:1;padding:7px 4px;border:1px solid var(--line);background:var(--field);border-radius:10px;font-size:.78rem}
 .chips{display:flex;gap:6px;margin-top:8px}.chips button{flex:1;padding:8px 2px;border:2px solid var(--line);background:var(--field);border-radius:12px;font-size:.78rem}.chips button.on{border-color:#2563eb;background:var(--onbg)}
 .tl{display:flex;align-items:center;gap:6px;font-size:.82rem;margin-top:8px}.tl input{flex:none;padding:0;width:auto}
@@ -125,7 +128,7 @@ const DB = ""; // (old setting, no longer used – Firebase below replaces it)
 // Shared reports + sign-in + admin: create a free Firebase project and paste its web-app config here (see FIREBASE-SETUP.md).
 // Leave apiKey empty to run in "this device only" mode.
 const FB_VAPID = "BCiOyz9jWDkkPFF8DoV6PUV4-siwMU-mSKU4k5IY73KDw0-KEkbsi01WWGg4koZ3YY08Aidh_WCjGKFYAq1LJiE"; // Web push key: Firebase console > Project settings > Cloud Messaging > Web Push certificates (only for alerts on the website)
-const FB_CONFIG = { messagingSenderId:"523645522276", apiKey:"AIzaSyDM_0D3_5WMLWBRiXxap7j2_6FsjHuS5Ug", authDomain:"floodwatch-v1.firebaseapp.com", databaseURL:"https://floodwatch-v1-default-rtdb.asia-southeast1.firebasedatabase.app", projectId:"floodwatch-v1", appId:"1:523645522276:web:f49354d12dd3bc0df6ea71" };
+const FB_CONFIG = { messagingSenderId:"", apiKey:"AIzaSyDM_0D3_5WMLWBRiXxap7j2_6FsjHuS5Ug", authDomain:"floodwatch-v1.firebaseapp.com", databaseURL:"https://floodwatch-v1-default-rtdb.asia-southeast1.firebasedatabase.app", projectId:"floodwatch-v1", appId:"1:523645522276:web:f49354d12dd3bc0df6ea71" };
 const FB_ON = !!FB_CONFIG.apiKey && typeof firebase !== "undefined";
 // true when running inside the Android app (Capacitor), false on the website
 const IS_APP = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
@@ -202,15 +205,28 @@ function current(){
 const ago = t => { const m=Math.round((Date.now()-t)/60000); return m<1?"just now":m<60?m+" min ago":Math.round(m/60)+" h ago"; };
 
 // ---- draw reports ----
+// ---- Google Maps links (open the Google Maps app or website; no key needed) ----
+const gmDir=(lat,lng)=>"https://www.google.com/maps/dir/?api=1&destination="+(+lat).toFixed(6)+","+(+lng).toFixed(6)+"&travelmode="+(vehicle==="moto"?"two-wheeler":"driving");
+const gmPin=(lat,lng)=>"https://www.google.com/maps/search/?api=1&query="+(+lat).toFixed(6)+","+(+lng).toFixed(6);
+function distLabel(lat,lng){
+  const d=hav(alertOrigin(),[lat,lng]), t=d<1000?(Math.round(d/10)*10)+" m":(d/1000).toFixed(1)+" km";
+  return "📏 About "+t+" from "+(me?"you":"the map center")+" (straight line)";
+}
+function gLinks(lat,lng){
+  return '<div class="small" style="margin-top:6px">'+distLabel(lat,lng)+'. Google Maps shows the road distance and time.</div>'+
+    '<div class="pv"><a href="'+gmDir(lat,lng)+'" target="_blank" rel="noopener">🧭 Directions</a><a href="'+gmPin(lat,lng)+'" target="_blank" rel="noopener">📍 Open pin</a></div>';
+}
+function popHtml(r){
+  const tools=r.auto
+    ? `<div class="small">${esc(r.desc||"Flooding reported by traffic data")}${r.from?" · "+esc(r.from):""}</div>`
+    : `<div class="pv"><button onclick="vote(${r.t},'${r.s}')">👍 Still true</button><button onclick="vote(${r.t},'ok')">✅ It’s cleared</button>${r.id?`<button onclick="flagReport('${r.id}')">🚩 Flag</button>`:""}</div>`;
+  return `<b>${LBL[st(r)]}</b> for ${VEH[vehicle]}<br>${r.auto?"Depth unknown":DEPTH[r.d]} · ${ago(r.t)}<br>${badge(r)}${r.ph&&r.id?`<div class="pv"><button onclick="showPhoto('${r.id}')">📷 View photo</button></div>`:""}${tools}${gLinks(r.lat,r.lng)}`;
+}
 function render(){
   layer.clearLayers();
   current().filter(r=>!(r.cleared&&Date.now()-r.t>CLEAR_HIDE_S*1000)).forEach(r => {
-    const tools=r.auto
-      ? `<div class="small">${esc(r.desc||"Flooding reported by traffic data")}${r.from?" · "+esc(r.from):""}</div>`
-      : `<div class="pv"><button onclick="vote(${r.t},'${r.s}')">👍 Still true</button><button onclick="vote(${r.t},'ok')">✅ It’s cleared</button>${r.id?`<button onclick="flagReport('${r.id}')">🚩 Flag</button>`:""}</div>`;
-    const pop=`<b>${LBL[st(r)]}</b> for ${VEH[vehicle]}<br>${r.auto?"Depth unknown":DEPTH[r.d]} · ${ago(r.t)}<br>${badge(r)}${r.ph&&r.id?`<div class="pv"><button onclick="showPhoto('${r.id}')">📷 View photo</button></div>`:""}${tools}`;
-    L.circle([r.lat,r.lng],{radius:NEAR_M*0.7,color:COL[st(r)],fillColor:COL[st(r)],fillOpacity:.35,weight:(r.v===2?4:2),dashArray:(r.auto?"2 7":(r.v>=1?null:"5 5"))}).bindPopup(pop).addTo(layer);
-    if(r.auto) L.marker([r.lat,r.lng],{icon:L.divIcon({className:"poi",html:"<span>📡</span>",iconSize:[30,30],iconAnchor:[15,15]}),zIndexOffset:400}).bindPopup(pop).addTo(layer);
+    L.circle([r.lat,r.lng],{radius:NEAR_M*0.7,color:COL[st(r)],fillColor:COL[st(r)],fillOpacity:.35,weight:(r.v===2?4:2),dashArray:(r.auto?"2 7":(r.v>=1?null:"5 5"))}).bindPopup(()=>popHtml(r)).addTo(layer);
+    if(r.auto) L.marker([r.lat,r.lng],{icon:L.divIcon({className:"poi",html:"<span>📡</span>",iconSize:[30,30],iconAnchor:[15,15]}),zIndexOffset:400}).bindPopup(()=>popHtml(r)).addTo(layer);
   });
 }
 window.vote = async (id,s) => {
@@ -273,7 +289,7 @@ function openAuth(msg){ openSettings("account",msg); }
 const myLive=()=>FB_ON?(user?reports.filter(r=>r.uid===user.uid):[]):reports.slice();
 const fmtT=t=>new Date(t).toLocaleString([],{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"});
 function repRow(r,when){
-  return '<div class="arow"><div><b style="color:'+COL[r.s]+'">'+LBL[r.s]+'</b> · '+DEPTH[r.d]+' · '+when+'<br><span class="small">'+badge(r)+'</span></div><div class="row" style="flex-wrap:wrap"><button class="nb" data-a="go" data-i="'+r.id+'">📍 Show</button>'+(r.ph?'<button class="nb" data-a="ph" data-i="'+r.id+'">📷 Photo</button>':"")+'<button class="nb" data-a="del" data-i="'+r.id+'">🗑 Delete</button></div></div>';
+  return '<div class="arow"><div><b style="color:'+COL[r.s]+'">'+LBL[r.s]+'</b> · '+DEPTH[r.d]+' · '+when+'<br><span class="small">'+badge(r)+'</span></div><div class="row" style="flex-wrap:wrap"><button class="nb" data-a="go" data-i="'+r.id+'">📍 Show</button>'+'<a class="nb" href="'+gmDir(r.lat,r.lng)+'" target="_blank" rel="noopener">🗺️ Google</a>'+(r.ph?'<button class="nb" data-a="ph" data-i="'+r.id+'">📷 Photo</button>':"")+'<button class="nb" data-a="del" data-i="'+r.id+'">🗑 Delete</button></div></div>';
 }
 function bindRows(root,list){ root.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>myAct(b.dataset.a,b.dataset.i,list)); }
 async function myAct(a,id,list){
@@ -413,7 +429,7 @@ $("acx").onclick=closeSettings;
 function renderAdmin(){
   const rows=reports.filter(r=>r.id).sort((a,b)=>flagN(b)-flagN(a)||b.t-a.t).slice(0,60);
   $("adl").innerHTML=rows.length?rows.map(r=>'<div class="arow"><div><b style="color:'+COL[r.s]+'">'+LBL[r.s]+'</b> · '+DEPTH[r.d]+' · '+ago(r.t)+(disputed(r)?' · <b>hidden</b>':'')+'<br><span class="small">'+badge(r)+' · by '+esc(String(r.uid||"?").slice(0,6))+'</span></div><div class="row" style="flex-wrap:wrap">'+
-    '<button class="nb" data-a="go" data-i="'+r.id+'">📍 Show</button>'+(r.ph?'<button class="nb" data-a="ph" data-i="'+r.id+'">📷 Photo</button>':"")+(r.av?"":'<button class="nb" data-a="ok" data-i="'+r.id+'">✅ Confirm</button>')+(flagN(r)?'<button class="nb" data-a="fl" data-i="'+r.id+'">Clear flags</button>':"")+
+    '<button class="nb" data-a="go" data-i="'+r.id+'">📍 Show</button>'+'<a class="nb" href="'+gmDir(r.lat,r.lng)+'" target="_blank" rel="noopener">🗺️ Google</a>'+(r.ph?'<button class="nb" data-a="ph" data-i="'+r.id+'">📷 Photo</button>':"")+(r.av?"":'<button class="nb" data-a="ok" data-i="'+r.id+'">✅ Confirm</button>')+(flagN(r)?'<button class="nb" data-a="fl" data-i="'+r.id+'">Clear flags</button>':"")+
     '<button class="nb" data-a="del" data-i="'+r.id+'">🗑 Delete</button><button class="nb" data-a="ban" data-i="'+r.id+'">🚫 Ban user</button></div></div>').join(""):'<div class="small">No reports in the last 24 hours.</div>';
   $("adl").querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>adminAct(b.dataset.a,b.dataset.i));
 }
@@ -783,7 +799,7 @@ function poiDraw(){
   Object.values(poiCache).forEach(p=>{
     if(!poiOn[p.kind]||!b.contains([p.lat,p.lng])) return;
     L.marker([p.lat,p.lng],{icon:L.divIcon({className:"poi",html:`<span class="${POI[p.kind].em?"em":""}">${POI[p.kind].e}</span>`,iconSize:[30,30],iconAnchor:[15,15]}),zIndexOffset:POI[p.kind].em?500:0})
-      .bindPopup(`<b>${esc(p.name)}</b><br>${POI[p.kind].n}<div class="pv"><button onclick="goPoi('${p.k}')">🧭 Route here</button></div>`).addTo(poiLayer);
+      .bindPopup(()=>`<b>${esc(p.name)}</b><br>${POI[p.kind].n}<div class="pv"><button onclick="goPoi('${p.k}')">🧭 Route here</button></div>${gLinks(p.lat,p.lng)}`).addTo(poiLayer);
   });
 }
 async function poiLoad(){
